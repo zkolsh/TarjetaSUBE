@@ -9,10 +9,8 @@ namespace Sube
 		public int ColectivoId { get; set; }
 		public decimal Monto { get; set; }
 		public int TarjetaId { get; set; }
-
-        public Boleto()
-		{
-		}
+		
+		
 		
 	}
 }
