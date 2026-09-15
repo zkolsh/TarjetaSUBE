@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Sube {
+namespace TarjetaSUBE {
 	public class SubeContext : DbContext {
 		public DbSet<Boleto> Boletos { get; set; }
 		public DbSet<Colectivo> Colectivos { get; set; }

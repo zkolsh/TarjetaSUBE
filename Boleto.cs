@@ -1,13 +1,11 @@
-﻿using System;
-
-namespace Sube
+﻿namespace TarjetaSUBE
 {
 	public class Boleto
 	{
 		public int Id { get; set; }
 		public DateTime Fecha { get; set; }
-		public Colectivo colectivo { get; set; }
+		public required Colectivo Colectivo { get; set; }
 		public decimal Monto { get; set; }
-		public Tarjeta tarjeta { get; set; }
+		public required Tarjeta Tarjeta { get; set; }
 	}
 }
