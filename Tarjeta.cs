@@ -9,6 +9,8 @@ namespace Sube
 		public int Id { get; set; }
 		public int dniUsuario { get; set; }
 		public decimal Saldo { get; set; }
+		private readonly static decimal SaldoMaximo = 40000;
+
         public Tarjeta()
 		{
 
@@ -17,7 +19,7 @@ namespace Sube
 		{
 			if(monto < Saldo)
 			{
-				Console.WriteLine("Te quedarias con monto negativo no podes pagar.")
+				Console.WriteLine("Te quedarias con monto negativo no podes pagar.");
 
 				return false;
 			}
@@ -38,7 +40,7 @@ namespace Sube
 
 		public bool ValidarCarga(decimal monto)
 		{
-			if(Saldo + monto > 40000)
+			if(Saldo + monto > SaldoMaximo)
 			{
 				Console.WriteLine("El saldo de la tarjeta no puede superar los 40000 pesos.");
 				return false;

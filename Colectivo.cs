@@ -7,7 +7,7 @@ namespace Sube
 
         public int NroInterno { get; set; }
         public string Linea { get; set; }
-		private readonly static int tarifaBasica = 1580
+		private readonly static int tarifaBasica = 1580;
         
 		public Colectivo()
 		{
@@ -23,7 +23,7 @@ namespace Sube
                 context.SaveChanges();
                 return true;
 			}
-			return false
+			return false;
         }
 
 	}
