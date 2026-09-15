@@ -6,11 +6,8 @@ namespace Sube
 	{
 		public int Id { get; set; }
 		public DateTime Fecha { get;set }
-		public int ColectivoId { get; set; }
+		public Colectivo colectivo { get; set; }
 		public decimal Monto { get; set; }
-		public int TarjetaId { get; set; }
-		
-		
-		
+		public Tarjeta tarjeta { get; set; }
 	}
 }

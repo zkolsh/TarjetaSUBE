@@ -14,12 +14,14 @@ namespace Sube
 			
 		}
 
-		public bool pagarCon(Tarjeta tarjeta)
+		public bool pagarCon(Tarjeta tarjeta,SubeContext context)
 		{
 			if (tarjeta.Pagar(tarifaBasica))
 			{
-				Boleto boleto = new Boleto {Fecha = DateTime.Now, ColectivoId = this.NroInterno, Monto = tarifaBasica, TarjetaId = tarjeta.Id };
-				return true;
+				Boleto boleto = new Boleto {Fecha = DateTime.Now, Colectivo = this, Monto = tarifaBasica, tarjeta = this.tarjeta };
+				context.Boletos.Add(boleto);
+                context.SaveChanges();
+                return true;
 			}
 			return false
         }

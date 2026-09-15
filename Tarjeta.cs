@@ -25,25 +25,28 @@ namespace Sube
 			return true; 
         }
 
-		public bool CargarTarjeta(decimal monto)
+		public bool CargarTarjeta(decimal monto,SubeContext context)
         {
-            if (CargasPermitidas.Contains(monto))
+            if (ValidarCarga(monto))
             {
                 Saldo += monto;
+				context.SaveChanges();
                 return true;
             }
-            else
-            {
-                if(Saldo+monto > 40000)
-				{
-					Console.WriteLine("El saldo de la tarjeta no puede superar los 40000 pesos.");
-                }
-				else
-				{
-					Console.WriteLine("Monto de carga no permitido. Los montos permitidos son: 2000, 3000, 4000, 5000, 8000, 10000, 15000, 20000, 25000, 30000.");
-				}
-                return false;
-            }
+			return false;
         }
+
+		public bool ValidarCarga(decimal monto)
+		{
+			if(Saldo + monto > 40000)
+			{
+				Console.WriteLine("El saldo de la tarjeta no puede superar los 40000 pesos.");
+				return false;
+            }
+			if (CargarPermitidas.Contains(monto))
+			{
+				return true;
+			}
+		}
     }
 }
