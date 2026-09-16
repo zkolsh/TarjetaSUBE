@@ -2,12 +2,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace TarjetaSUBE {
 	public class SubeContext : DbContext {
+		public SubeContext() { }
+
+		public SubeContext(DbContextOptions<SubeContext> options) : base(options) { }
+
 		public DbSet<Boleto> Boletos { get; set; }
 		public DbSet<Colectivo> Colectivos { get; set; }
 		public DbSet<Tarjeta> Tarjetas { get; set; }
 
 		protected override void OnConfiguring(DbContextOptionsBuilder options) {
-			options.UseSqlite(@"Data Source=./TiendaSUBE.db");
+			if (!options.IsConfigured) {
+				options.UseSqlite(@"Data Source=./TiendaSUBE.db");
+			}
 		}
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder) {

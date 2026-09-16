@@ -11,7 +11,7 @@
 
 		public bool Pagar(decimal monto)
 		{
-			if(monto < Saldo)
+			if(monto > Saldo)
 			{
 				Console.WriteLine("Te quedarias con monto negativo no podes pagar.");
 				return false;
