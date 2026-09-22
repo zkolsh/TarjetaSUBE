@@ -17,9 +17,18 @@ namespace TarjetaSUBE {
 		}
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder) {
-			modelBuilder.Entity<Boleto>()
-				.ToTable("Boleto")
-				.HasKey(e => e.Id);
+			modelBuilder.Entity<Boleto>(entity => {
+				entity.ToTable("Boleto");
+				entity.HasKey(e => e.Id);
+
+				entity.HasOne(e => e.Colectivo)
+					.WithMany()
+					.HasForeignKey("ColectivoId");
+
+				entity.HasOne(e => e.Tarjeta)
+					.WithMany()
+					.HasForeignKey("TarjetaId");
+			});
 
 			modelBuilder.Entity<Colectivo>()
 				.ToTable("Colectivo")
