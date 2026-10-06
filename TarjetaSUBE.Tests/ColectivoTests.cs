@@ -55,16 +55,29 @@ namespace TarjetaSUBE.Tests {
 		[Test]
 		public void PagarCon_ConSaldoInsuficiente_RetornaFalseYNoCreaBoleto()
 		{
-			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 1000 };
-
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -1000 };
 
 			_context.Tarjetas.Add(tarjeta);
 
 			bool resultado = colectivo.pagarCon(_context, tarjeta);
 
 			Assert.That(resultado, Is.False);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(1000));
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-1000));
 			Assert.That(_context.Boletos.Count(), Is.EqualTo(0));
+		}
+
+		[Test]
+		public void PagarCon_ConSaldoCero_PermiteViajePlusCreaBoletoYQuedaEnSaldoNegativo()
+		{
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 0 };
+
+			_context.Tarjetas.Add(tarjeta);
+
+			bool resultado = colectivo.pagarCon(_context, tarjeta);
+
+			Assert.That(resultado, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-1580));
+			Assert.That(_context.Boletos.Count(), Is.EqualTo(1));
 		}
 	}
 }
