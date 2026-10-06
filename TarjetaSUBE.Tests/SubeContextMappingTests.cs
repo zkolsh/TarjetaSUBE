@@ -328,5 +328,250 @@ namespace TarjetaSUBE.Tests {
 			Assert.That(_context.Colectivos.Find(savedColectivoId), Is.Null);
 			Assert.That(_context.Tarjetas.Find(savedTarjetaId), Is.Null);
 		}
+
+		[Test]
+		public void TipoTarjeta_DerivedTypes_ExistInAssembly() {
+			var baseType = typeof(TipoTarjeta);
+
+			var expectedTypes = new[] {
+				typeof(TarjetaNormal),
+				typeof(MedioBoletoEstudiantil),
+				typeof(BoletoGratuitoEstudiantil),
+				typeof(FranquiciaCompleta)
+			};
+
+			foreach (var expectedType in expectedTypes) {
+				Assert.That(expectedType.IsClass, Is.True, $"{expectedType.Name} should be a class.");
+				Assert.That(expectedType.IsAbstract, Is.False, $"{expectedType.Name} should not be abstract.");
+				Assert.That(expectedType.IsSubclassOf(baseType), Is.True, $"{expectedType.Name} should inherit from TipoTarjeta.");
+			}
+		}
+
+		[Test]
+		public void TipoTarjeta_ReflectionDiscovery_FindsAllDerivedTypes() {
+			var derivedTypes = typeof(TipoTarjeta).Assembly.GetTypes()
+				.Where(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(typeof(TipoTarjeta)))
+				.ToList();
+
+			Assert.That(derivedTypes, Is.EquivalentTo(new[] {
+				typeof(TarjetaNormal),
+				typeof(MedioBoletoEstudiantil),
+				typeof(BoletoGratuitoEstudiantil),
+				typeof(FranquiciaCompleta)
+			}));
+		}
+
+		[Test]
+		public void TipoTarjeta_ModelMapping_UsesTphAndMapsAllDerivedTypesToSameTable() {
+			var model = _context.Model;
+
+			var baseEntityType = model.FindEntityType(typeof(TipoTarjeta));
+			Assert.That(baseEntityType, Is.Not.Null);
+			Assert.That(baseEntityType!.GetTableName(), Is.EqualTo("TipoTarjeta"));
+			var derivedTypes = new[] {
+				typeof(TarjetaNormal),
+				typeof(MedioBoletoEstudiantil),
+				typeof(BoletoGratuitoEstudiantil),
+				typeof(FranquiciaCompleta)
+			};
+
+			foreach (var derivedType in derivedTypes) {
+				var entityType = model.FindEntityType(derivedType);
+				Assert.That(entityType, Is.Not.Null, $"{derivedType.Name} was not registered in the EF model.");
+				Assert.That(entityType!.BaseType, Is.EqualTo(baseEntityType), $"{derivedType.Name} should derive from TipoTarjeta in the EF model.");
+				Assert.That(entityType.GetTableName(), Is.EqualTo("TipoTarjeta"), $"{derivedType.Name} should use the TipoTarjeta table because TPH is being used.");
+			}
+		}
+
+		[Test]
+		public void TipoTarjeta_ModelMapping_HasExpectedKeyAndProperties() {
+			var entityType = _context.Model.FindEntityType(typeof(TipoTarjeta));
+
+			Assert.That(entityType, Is.Not.Null);
+
+			var pk = entityType!.FindPrimaryKey();
+			Assert.That(pk, Is.Not.Null);
+			Assert.That(pk!.Properties.Select(p => p.Name), Contains.Item(nameof(TipoTarjeta.id)));
+
+			var nombreProperty = entityType.FindProperty(nameof(TipoTarjeta.nombre));
+			Assert.That(nombreProperty, Is.Not.Null);
+			Assert.That(nombreProperty!.IsNullable, Is.False);
+
+			var descuentoProperty = entityType.FindProperty(nameof(TipoTarjeta.porcentaje_descuento));
+
+			Assert.That(descuentoProperty, Is.Not.Null);
+			Assert.That(descuentoProperty!.IsNullable, Is.False);
+		}
+
+		[Test]
+		public void TipoTarjeta_ModelMapping_HasDiscriminatorForAllDerivedTypes() {
+			var model = _context.Model;
+			var expectedTypes = new[] {
+				typeof(TipoTarjeta),
+				typeof(TarjetaNormal),
+				typeof(MedioBoletoEstudiantil),
+				typeof(BoletoGratuitoEstudiantil),
+				typeof(FranquiciaCompleta)
+			};
+
+			var baseEntityType = model.FindEntityType(typeof(TipoTarjeta));
+			Assert.That(baseEntityType, Is.Not.Null);
+
+			var discriminatorPropertyName = baseEntityType!.GetDiscriminatorPropertyName();
+			Assert.That(discriminatorPropertyName, Is.EqualTo("Discriminator"));
+
+			var discriminatorValues = new List<object?>();
+			foreach (var type in expectedTypes) {
+				var entityType = model.FindEntityType(type);
+				Assert.That(entityType, Is.Not.Null, $"{type.Name} should be registered in the EF model.");
+				Assert.That(entityType!.GetDiscriminatorPropertyName(), Is.EqualTo("Discriminator"), $"{type.Name} should use the TPH discriminator.");
+
+				var discriminatorValue = entityType.GetDiscriminatorValue();
+				Assert.That(discriminatorValue, Is.Not.Null, $"{type.Name} should have a discriminator value.");
+
+				discriminatorValues.Add(discriminatorValue);
+			}
+
+			Assert.That(discriminatorValues.Distinct().Count(), Is.EqualTo(discriminatorValues.Count), "Each TipoTarjeta type should have a distinct discriminator value.");
+		}
+
+		[Test]
+		public void TipoTarjeta_Table_ExistsInSql_AndDerivedTablesDoNotExist() {
+			Assert.That(File.Exists(_dbPath), Is.True);
+
+			using var connection = new SqliteConnection($"Data Source={_dbPath};Mode=ReadOnly");
+			connection.Open();
+
+			using var command = connection.CreateCommand();
+			command.CommandText = @"
+				SELECT name
+				FROM sqlite_master
+				WHERE type = 'table'
+				  AND name NOT LIKE 'sqlite_%';";
+
+			using var reader = command.ExecuteReader();
+			var tables = new List<string>();
+			while (reader.Read()) {
+				tables.Add(reader.GetString(0));
+			}
+
+			Assert.That(tables, Does.Contain("TipoTarjeta"), "TipoTarjeta table should exist in SQLite.");
+			Assert.That(tables, Does.Not.Contain("TarjetaNormal"), "TarjetaNormal should not have its own table when using TPH.");
+			Assert.That(tables, Does.Not.Contain("MedioBoletoEstudiantil"), "MedioBoletoEstudiantil should not have its own table when using TPH.");
+			Assert.That(tables, Does.Not.Contain("BoletoGratuitoEstudiantil"), "BoletoGratuitoEstudiantil should not have its own table when using TPH.");
+			Assert.That(tables, Does.Not.Contain("FranquiciaCompleta"), "FranquiciaCompleta should not have its own table when using TPH.");
+		}
+
+		[Test]
+		public void TipoTarjeta_Table_ContainsTphDiscriminatorColumnInSql() {
+			using var connection = new SqliteConnection($"Data Source={_dbPath};Mode=ReadOnly");
+			connection.Open();
+
+			using var command = connection.CreateCommand();
+			command.CommandText = "PRAGMA table_info(\"TipoTarjeta\");";
+
+			using var reader = command.ExecuteReader();
+			var columns = new List<string>();
+			while (reader.Read()) {
+				columns.Add(reader.GetString(1));
+			}
+
+			Assert.That(columns, Contains.Item("id"));
+			Assert.That(columns, Contains.Item("nombre"));
+			Assert.That(columns, Contains.Item("porcentaje_descuento"));
+			Assert.That(columns, Contains.Item("Discriminator"), "TPH requires the TipoTarjeta table to contain the discriminator column.");
+		}
+
+		[Test]
+		public void TipoTarjeta_Tph_CRUD_UsesConcreteDerivedTypes() {
+			var tarjetas = new TipoTarjeta[] {
+				new TarjetaNormal {
+					id = 1001,
+					nombre = "Normal",
+					porcentaje_descuento = 0
+				},
+				new MedioBoletoEstudiantil {
+					id = 1002,
+					nombre = "Medio Boleto Estudiantil",
+					porcentaje_descuento = 50
+				},
+				new BoletoGratuitoEstudiantil {
+					id = 1003,
+					nombre = "Boleto Gratuito Estudiantil",
+					porcentaje_descuento = 100
+				},
+				new FranquiciaCompleta {
+					id = 1004,
+					nombre = "Franquicia Completa",
+					porcentaje_descuento = 100
+				}
+			};
+
+			_context.TiposTarjetas.AddRange(tarjetas);
+			_context.SaveChanges();
+			_context.ChangeTracker.Clear();
+
+			foreach (var tarjeta in tarjetas) {
+				var loaded = _context.TiposTarjetas.Find(tarjeta.id);
+
+				Assert.That(loaded, Is.Not.Null);
+				Assert.That(loaded!.id, Is.EqualTo(tarjeta.id));
+				Assert.That(loaded.nombre, Is.EqualTo(tarjeta.nombre));
+				Assert.That(loaded.porcentaje_descuento, Is.EqualTo(tarjeta.porcentaje_descuento));
+				Assert.That(loaded.GetType(), Is.EqualTo(tarjeta.GetType()), $"id={tarjeta.id} should be materialized as {tarjeta.GetType().Name}.");
+			}
+		}
+
+		[Test]
+		public void TipoTarjeta_TphRows_HaveExpectedSqlDiscriminators() {
+			var tarjetas = new TipoTarjeta[] {
+				new TarjetaNormal {
+					id = 1101,
+					nombre = "Normal SQL",
+					porcentaje_descuento = 0
+				},
+				new MedioBoletoEstudiantil {
+					id = 1102,
+					nombre = "Medio Boleto SQL",
+					porcentaje_descuento = 50
+				},
+				new BoletoGratuitoEstudiantil {
+					id = 1103,
+					nombre = "Gratuito SQL",
+					porcentaje_descuento = 100
+				},
+				new FranquiciaCompleta {
+					id = 1104,
+					nombre = "Franquicia SQL",
+					porcentaje_descuento = 100
+				}
+			};
+
+			_context.TiposTarjetas.AddRange(tarjetas);
+			_context.SaveChanges();
+
+			var model = _context.Model;
+			var expected = tarjetas.ToDictionary(t => t.id, t => model .FindEntityType(t.GetType())! .GetDiscriminatorValue());
+
+			var connection = (SqliteConnection)_context.Database.GetDbConnection();
+			if (connection.State != System.Data.ConnectionState.Open) {
+				connection.Open();
+			}
+
+			foreach (var item in expected) {
+				using var command = connection.CreateCommand();
+				command.CommandText = @"
+					SELECT ""Discriminator""
+					FROM ""TipoTarjeta""
+					WHERE ""id"" = $id;";
+
+				command.Parameters.AddWithValue("$id", item.Key);
+
+				var actual = command.ExecuteScalar();
+				Assert.That(actual, Is.Not.Null, $"No SQL row found for TipoTarjeta id={item.Key}.");
+				Assert.That(actual!.ToString(), Is.EqualTo(item.Value?.ToString()), $"Unexpected discriminator for TipoTarjeta id={item.Key}.");
+			}
+		}
+
 	}
 }
