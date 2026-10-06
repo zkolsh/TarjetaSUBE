@@ -1,4 +1,4 @@
-﻿namespace TarjetaSUBE
+namespace TarjetaSUBE
 {
 	public class Tarjeta
 	{
@@ -7,6 +7,8 @@
 		public int Id { get; set; }
 		public int dniUsuario { get; set; }
 		public decimal Saldo { get; set; }
+		public int id_beneficio { get; set; } = 1;
+		public virtual TipoTarjeta? TipoTarjeta { get; set; }
 		private readonly static decimal SaldoMaximo = 40000;
 		private readonly static decimal LimiteNegativo = -2000;
 		public bool Pagar(decimal monto)

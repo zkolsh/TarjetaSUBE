@@ -35,9 +35,14 @@ namespace TarjetaSUBE {
 				.ToTable("Colectivo")
 				.HasKey(e => e.NroInterno);
 
-			modelBuilder.Entity<Tarjeta>()
-				.ToTable("Tarjeta")
-				.HasKey(e => e.Id);
+			modelBuilder.Entity<Tarjeta>(entity => {
+				entity.ToTable("Tarjeta");
+				entity.HasKey(e => e.Id);
+
+				entity.HasOne(e => e.TipoTarjeta)
+					.WithMany()
+					.HasForeignKey(e => e.id_beneficio);
+			});
 
 			modelBuilder.Entity<TipoTarjeta>()
 				.ToTable("TipoTarjeta")
