@@ -107,37 +107,79 @@ namespace TarjetaSUBE.Tests
 			Assert.That(tarjeta.Saldo, Is.EqualTo(1000));
 		}
 
-		[Test]
-		public void Pagar_ConSaldoSuficiente_DescuentaSaldoYRetornaTrue()
+		[TestCase(1000)]
+		[TestCase(2000)]
+		public void Pagar_ConSaldoSuficiente_DescuentaSaldoYRetornaTrue(decimal monto)
 		{
-			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 3000 };
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = monto };
 
 			bool resultado = tarjeta.Pagar(1580);
 
 			Assert.That(resultado, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(1420));
+			Assert.That(tarjeta.Saldo, Is.EqualTo((monto-1580)));
 		}
 
 		[Test]
 		public void Pagar_ConSaldoInsuficiente_RetornaFalseYNoModificaSaldo()
 		{
-			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 1000 };
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -1000 };
 
 			bool resultado = tarjeta.Pagar(1580);
 
 			Assert.That(resultado, Is.False);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(1000));
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-1000));
 		}
 
 		[Test]
-		public void Pagar_ConSaldoExacto_DejaSaldoEnCeroYRetornaTrue()
+		public void Pagar_ConSaldoExacto_DejaSaldoEnLimiteYRetornaTrue()
 		{
-			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 1580 };
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -420 };
 
 			bool resultado = tarjeta.Pagar(1580);
 
 			Assert.That(resultado, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(0));
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-2000));
+		}
+
+		[Test]
+		public void Pagar_NoPuedeQuedarConMenosSaldoQueElPermitido()
+		{
+			// Tarjeta con saldo 0: realiza un primer viaje plus (-1580, permitido ya que no supera -2000)
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 0 };
+			bool primerViaje = tarjeta.Pagar(1580);
+
+			Assert.That(primerViaje, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-1580));
+
+			// Segundo viaje: -1580 - 1580 = -3160 (menor a -2000, no permitido)
+			bool segundoViaje = tarjeta.Pagar(1580);
+
+			Assert.That(segundoViaje, Is.False);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-1580));
+		}
+
+		[Test]
+		public void CargarTarjeta_ConSaldoNegativoPorViajePlus_DescuentaDeudaYActualizaSaldoCorrectamente()
+		{
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 0 };
+			_context.Tarjetas.Add(tarjeta);
+			_context.SaveChanges();
+
+			// Realiza un viaje con saldo cero, quedando en saldo negativo (-1580)
+			bool viajeExitoso = tarjeta.Pagar(1580);
+			Assert.That(viajeExitoso, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-1580));
+
+			// Se realiza una carga permitida de 2000 pesos
+			bool resultadoCarga = tarjeta.CargarTarjeta(2000, _context);
+
+			Assert.That(resultadoCarga, Is.True);
+			// El saldo resultante debe descontar la deuda: 2000 - 1580 = 420
+			Assert.That(tarjeta.Saldo, Is.EqualTo(420));
+
+			var tarjetaEnDb = _context.Tarjetas.Find(tarjeta.Id);
+			Assert.That(tarjetaEnDb, Is.Not.Null);
+			Assert.That(tarjetaEnDb!.Saldo, Is.EqualTo(420));
 		}
 	}
 }

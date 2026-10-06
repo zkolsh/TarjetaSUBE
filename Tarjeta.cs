@@ -8,12 +8,12 @@
 		public int dniUsuario { get; set; }
 		public decimal Saldo { get; set; }
 		private readonly static decimal SaldoMaximo = 40000;
-
+		private readonly static decimal LimiteNegativo = -2000;
 		public bool Pagar(decimal monto)
 		{
-			if(monto > Saldo)
+			if((Saldo - monto) < LimiteNegativo)
 			{
-				Console.WriteLine("Te quedarias con monto negativo no podes pagar.");
+				Console.WriteLine("Te quedarias con monto menor al permitido.No podes Pagar.");
 				return false;
 			}
 			
