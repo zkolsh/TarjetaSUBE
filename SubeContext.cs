@@ -9,6 +9,7 @@ namespace TarjetaSUBE {
 		public DbSet<Boleto> Boletos { get; set; }
 		public DbSet<Colectivo> Colectivos { get; set; }
 		public DbSet<Tarjeta> Tarjetas { get; set; }
+		public DbSet<TipoTarjeta> TiposTarjetas { get; set; }
 
 		protected override void OnConfiguring(DbContextOptionsBuilder options) {
 			if (!options.IsConfigured) {
@@ -37,6 +38,22 @@ namespace TarjetaSUBE {
 			modelBuilder.Entity<Tarjeta>()
 				.ToTable("Tarjeta")
 				.HasKey(e => e.Id);
+
+			modelBuilder.Entity<TipoTarjeta>()
+				.ToTable("TipoTarjeta")
+				.UseTphMappingStrategy();
+
+			var tiposDerivados = typeof(TipoTarjeta).Assembly.GetTypes()
+				.Where(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(typeof(TipoTarjeta)));
+			foreach (var tipo in tiposDerivados) {
+				modelBuilder.Entity(tipo);
+			}
+
+			modelBuilder.Entity<TipoTarjeta>(e => {
+				e.HasKey(x => x.id);
+				e.Property(x => x.nombre).IsRequired();
+				e.Property(x => x.porcentaje_descuento).IsRequired();
+			});
 		}
 	}
 }
