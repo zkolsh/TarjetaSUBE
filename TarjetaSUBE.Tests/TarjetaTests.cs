@@ -181,5 +181,47 @@ namespace TarjetaSUBE.Tests
 			Assert.That(tarjetaEnDb, Is.Not.Null);
 			Assert.That(tarjetaEnDb!.Saldo, Is.EqualTo(420));
 		}
+
+		[Test]
+		public void FranquiciaCompleta_SiemprePuedePagarBoleto()
+		{
+			var franquiciaCompleta = new FranquiciaCompleta
+			{
+				id = 1,
+				nombre = "Franquicia Completa",
+				porcentaje_descuento = 100
+			};
+			_context.TiposTarjetas.Add(franquiciaCompleta);
+			_context.SaveChanges();
+
+			decimal tarifaNormal = 1580;
+			decimal montoAPagar = tarifaNormal * (1 - ((decimal)franquiciaCompleta.porcentaje_descuento / 100m));
+
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -2000 };
+
+			bool resultado = tarjeta.Pagar(montoAPagar);
+
+			Assert.That(montoAPagar, Is.EqualTo(0));
+			Assert.That(resultado, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-2000));
+		}
+
+		[Test]
+		public void MedioBoleto_MontoDelBoletoEsSiempreLaMitadDelNormal()
+		{
+			var medioBoleto = new MedioBoletoEstudiantil
+			{
+				id = 2,
+				nombre = "Medio Boleto Estudiantil",
+				porcentaje_descuento = 50
+			};
+			_context.TiposTarjetas.Add(medioBoleto);
+			_context.SaveChanges();
+
+			decimal tarifaNormal = 1580;
+			decimal montoAPagar = tarifaNormal * (1 - ((decimal)medioBoleto.porcentaje_descuento / 100m));
+
+			Assert.That(montoAPagar, Is.EqualTo(tarifaNormal / 2));
+		}
 	}
 }
