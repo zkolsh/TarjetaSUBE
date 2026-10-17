@@ -11,6 +11,7 @@ namespace TarjetaSUBE.Tests {
         private ProveedorFechaSimulado reloj = null!;
         private MedioBoletoEstudiantil medioBoleto = null!;
 
+        private BoletoGratuitoEstudiantil boletoGratuito = null!;
         [SetUp]
 		public void Setup()
 		{
@@ -33,8 +34,16 @@ namespace TarjetaSUBE.Tests {
                 nombre = "Medio Boleto Estudiantil",
                 porcentaje_descuento = 50
             };
-
             _context.TiposTarjetas.Add(medioBoleto);
+
+            boletoGratuito = new BoletoGratuitoEstudiantil
+            {
+                id = 3,
+                nombre = "Boleto Gratuito Estudiantil",
+                porcentaje_descuento = 100
+            };
+
+            _context.TiposTarjetas.Add(boletoGratuito);
             _context.SaveChanges();
 		}
 
@@ -165,6 +174,73 @@ namespace TarjetaSUBE.Tests {
             bool viaje3 = colectivo.pagarCon(_context, tarjeta, reloj);
             Assert.That(viaje3, Is.True);
             Assert.That(tarjeta.Saldo, Is.EqualTo(4210 - 790)); // 3420
+        }
+
+        [Test]
+        public void BoletoGratuito_NoPermiteRealizarMasDeDosViajesGratuitosPorDia()
+        {
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 11223344,
+                Saldo = 10000,
+                TipoTarjeta = boletoGratuito
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            // 1er viaje: 08:00 -> Gratis ($0)
+            colectivo.pagarCon(_context, tarjeta, reloj);
+
+            // 2do viaje: 09:00 -> Gratis ($0)
+            reloj.AdelantarMinutos(60);
+            colectivo.pagarCon(_context, tarjeta, reloj);
+
+            // 3er viaje: 12:00 -> Ya no es gratis
+            reloj.AdelantarMinutos(180);
+            colectivo.pagarCon(_context, tarjeta, reloj);
+
+            // 4to viaje: 13:00 -> Ya no es gratis
+            reloj.AdelantarMinutos(60);
+            colectivo.pagarCon(_context, tarjeta, reloj);
+            // Verificamos en la base de datos que la cantidad de boletos con Monto == 0 en el día es exactamente 2
+            int boletosGratisDelDia = _context.Boletos
+                .Count(b => b.Tarjeta.Id == tarjeta.Id
+                         && b.Fecha.Date == reloj.Ahora.Date
+                         && b.Monto == 0);
+            Assert.That(boletosGratisDelDia, Is.EqualTo(2), "No debe haber más de dos viajes gratuitos en el mismo día.");
+        }
+
+        [Test]
+        public void BoletoGratuito_ViajesPosterioresAlSegundoSeCobranConPrecioCompleto()
+        {
+           
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 55667788,
+                Saldo = 5000,
+                TipoTarjeta = boletoGratuito
+            };
+
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            // 1er viaje (08:00): gratis ($0) -> Saldo sigue en 5000
+            Assert.That(colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
+
+            // 2do viaje (09:00): gratis ($0) -> Saldo sigue en 5000
+            reloj.AdelantarMinutos(60);
+            Assert.That(colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
+
+            // 3er viaje (10:00, posterior al 2do): cobra precio completo ($1580)
+            reloj.AdelantarMinutos(60);
+            Assert.That(colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 1580)); // 3420
+            
+            // Verificamos que el boleto emitido para este 3er viaje registró el monto completo ($1580)
+            var boletoTercerViaje = _context.Boletos.OrderByDescending(b => b.Fecha).First();
+            Assert.That(boletoTercerViaje.Monto, Is.EqualTo(1580));
         }
     }
 }

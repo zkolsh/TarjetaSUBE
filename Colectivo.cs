@@ -38,22 +38,16 @@
 
         private decimal CalcularTarifa(SubeContext context, Tarjeta tarjeta, DateTime fechaActual)
         {
-            if (tarjeta.TipoTarjeta is MedioBoletoEstudiantil)
-            {
+
+            int viajesHoyConDescuento = context.Boletos
+                .Count(b => b.Tarjeta.Id == tarjeta.Id
+                         && b.Fecha.Date == fechaActual.Date
+                         && b.Monto < tarifaBasica);
+
+            if ((tarjeta.TipoTarjeta is MedioBoletoEstudiantil || tarjeta.TipoTarjeta is BoletoGratuitoEstudiantil) && viajesHoyConDescuento >= 2) { 
                
-                int viajesHoyConDescuento = context.Boletos
-                    .Count(b => b.Tarjeta.Id == tarjeta.Id
-                             && b.Fecha.Date == fechaActual.Date
-                             && b.Monto < tarifaBasica);
-
-                if (viajesHoyConDescuento >= 2)
-                {
                     return tarifaBasica;
-                }
-                
-          
             }
-
             return tarjeta.TipoTarjeta?.CalcularMonto(tarifaBasica) ?? tarifaBasica;
         }
     
