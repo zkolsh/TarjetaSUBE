@@ -242,5 +242,55 @@ namespace TarjetaSUBE.Tests {
             var boletoTercerViaje = _context.Boletos.OrderByDescending(b => b.Fecha).First();
             Assert.That(boletoTercerViaje.Monto, Is.EqualTo(1580));
         }
+
+        [Test]
+        public void FranquiciaCompleta_SiemprePuedePagarBoletoEnColectivo_InclusoSinSaldo()
+        {
+            var franquicia = new FranquiciaCompleta
+            {
+                id = 4,
+                nombre = "Franquicia Completa",
+                porcentaje_descuento = 100
+            };
+            _context.TiposTarjetas.Add(franquicia);
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 12344321,
+                Saldo = -2000, // En el límite negativo máximo
+                TipoTarjeta = franquicia
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+          
+            bool resultado = colectivo.pagarCon(_context, tarjeta);
+            Assert.That(resultado, Is.True, "Franquicia completa siempre debe poder pagar en el colectivo.");
+            Assert.That(tarjeta.Saldo, Is.EqualTo(-2000), "No debe descontar saldo.");
+            var boletoEmitido = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
+            Assert.That(boletoEmitido.Monto, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void MedioBoleto_PrimerViaje_CobraLaMitadDeLaTarifaNormal()
+        {
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 12345678,
+                Saldo = 5000,
+                TipoTarjeta = medioBoleto
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            // Paga el primer viaje
+            bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+            // 1. Debe permitir el viaje
+            Assert.That(resultado, Is.True);
+
+            // 2. Descuenta exactamente la mitad (1580 / 2 = 790) -> 5000 - 790 = 4210
+            Assert.That(tarjeta.Saldo, Is.EqualTo(4210));
+            // 3. El boleto emitido tiene registrado el monto de 790
+            var boletoEmitido = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
+            Assert.That(boletoEmitido.Monto, Is.EqualTo(790));
+        }
     }
 }
