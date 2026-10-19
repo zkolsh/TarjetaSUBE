@@ -117,6 +117,26 @@ namespace TarjetaSUBE.Tests {
 			Assert.That(montoProp, Is.Not.Null);
 			Assert.That(montoProp!.GetColumnName(), Is.EqualTo("Monto"));
 
+			var lineaProp = boletoEntityType.FindProperty(nameof(Boleto.Linea));
+			Assert.That(lineaProp, Is.Not.Null);
+			Assert.That(lineaProp!.GetColumnName(), Is.EqualTo("Linea"));
+
+			var totalAbonadoProp = boletoEntityType.FindProperty(nameof(Boleto.TotalAbonado));
+			Assert.That(totalAbonadoProp, Is.Not.Null);
+			Assert.That(totalAbonadoProp!.GetColumnName(), Is.EqualTo("TotalAbonado"));
+
+			var saldoProp = boletoEntityType.FindProperty(nameof(Boleto.Saldo));
+			Assert.That(saldoProp, Is.Not.Null);
+			Assert.That(saldoProp!.GetColumnName(), Is.EqualTo("Saldo"));
+
+			var saldoRestanteProp = boletoEntityType.FindProperty(nameof(Boleto.SaldoRestante));
+			Assert.That(saldoRestanteProp, Is.Not.Null);
+			Assert.That(saldoRestanteProp!.GetColumnName(), Is.EqualTo("SaldoRestante"));
+
+			var tipoTarjetaProp = boletoEntityType.FindProperty(nameof(Boleto.TipoTarjeta));
+			Assert.That(tipoTarjetaProp, Is.Not.Null);
+			Assert.That(tipoTarjetaProp!.GetColumnName(), Is.EqualTo("TipoTarjeta"));
+
 			var colectivoEntityType = _context.Model.FindEntityType(typeof(Colectivo))!;
 			var tarjetaEntityType = _context.Model.FindEntityType(typeof(Tarjeta))!;
 
@@ -130,6 +150,32 @@ namespace TarjetaSUBE.Tests {
 			var tarjetaFk = foreignKeys.FirstOrDefault(fk => fk.PrincipalEntityType == tarjetaEntityType);
 			Assert.That(tarjetaFk, Is.Not.Null);
 			Assert.That(tarjetaFk!.Properties.Select(p => p.GetColumnName()), Contains.Item("TarjetaId"));
+		}
+
+		[Test]
+		public void Boleto_Table_ContainsAllExpectedColumnsInSql() {
+			using var connection = new SqliteConnection($"Data Source={_dbPath};Mode=ReadOnly");
+			connection.Open();
+
+			using var command = connection.CreateCommand();
+			command.CommandText = "PRAGMA table_info(\"Boleto\");";
+
+			using var reader = command.ExecuteReader();
+			var columns = new List<string>();
+			while (reader.Read()) {
+				columns.Add(reader.GetString(1));
+			}
+
+			Assert.That(columns, Contains.Item("Id"));
+			Assert.That(columns, Contains.Item("Fecha"));
+			Assert.That(columns, Contains.Item("ColectivoId"));
+			Assert.That(columns, Contains.Item("Monto"));
+			Assert.That(columns, Contains.Item("TarjetaId"));
+			Assert.That(columns, Contains.Item("Linea"));
+			Assert.That(columns, Contains.Item("TotalAbonado"));
+			Assert.That(columns, Contains.Item("Saldo"));
+			Assert.That(columns, Contains.Item("SaldoRestante"));
+			Assert.That(columns, Contains.Item("TipoTarjeta"));
 		}
 
 		[Test]
@@ -218,8 +264,14 @@ namespace TarjetaSUBE.Tests {
 			var boleto = new Boleto {
 				Fecha = explicitFecha,
 				Colectivo = colectivo,
+				Linea = "110",
 				Monto = 1580,
-				Tarjeta = tarjeta
+				TotalAbonado = 1580,
+				Saldo = 13420,
+				SaldoRestante = 13420,
+				Tarjeta = tarjeta,
+				TarjetaId = tarjeta.Id,
+				TipoTarjeta = "TarjetaNormal"
 			};
 
 			_context.Boletos.Add(boleto);
@@ -234,14 +286,23 @@ namespace TarjetaSUBE.Tests {
 			Assert.That(readBoleto!.Id, Is.EqualTo(savedBoletoId));
 			Assert.That(readBoleto.Fecha, Is.EqualTo(explicitFecha));
 			Assert.That(readBoleto.Monto, Is.EqualTo(1580));
+			Assert.That(readBoleto.Linea, Is.EqualTo("110"));
+			Assert.That(readBoleto.TotalAbonado, Is.EqualTo(1580));
+			Assert.That(readBoleto.Saldo, Is.EqualTo(13420));
+			Assert.That(readBoleto.SaldoRestante, Is.EqualTo(13420));
+			Assert.That(readBoleto.TipoTarjeta, Is.EqualTo("TarjetaNormal"));
 
 			readBoleto.Monto = 2000;
+			readBoleto.TotalAbonado = 2000;
+			readBoleto.SaldoRestante = 13000;
 			_context.SaveChanges();
 			_context.ChangeTracker.Clear();
 
 			var updatedBoleto = _context.Boletos.Find(savedBoletoId);
 			Assert.That(updatedBoleto, Is.Not.Null);
 			Assert.That(updatedBoleto!.Monto, Is.EqualTo(2000));
+			Assert.That(updatedBoleto.TotalAbonado, Is.EqualTo(2000));
+			Assert.That(updatedBoleto.SaldoRestante, Is.EqualTo(13000));
 
 			_context.Boletos.Remove(updatedBoleto);
 			_context.SaveChanges();
@@ -264,8 +325,14 @@ namespace TarjetaSUBE.Tests {
 			var boleto = new Boleto {
 				Fecha = explicitFecha,
 				Colectivo = colectivo,
+				Linea = "110",
 				Monto = 1580,
-				Tarjeta = tarjeta
+				TotalAbonado = 1580,
+				Saldo = 8420,
+				SaldoRestante = 8420,
+				Tarjeta = tarjeta,
+				TarjetaId = tarjeta.Id,
+				TipoTarjeta = "TarjetaNormal"
 			};
 
 			_context.Boletos.Add(boleto);
@@ -286,6 +353,11 @@ namespace TarjetaSUBE.Tests {
 			Assert.That(readBoleto!.Id, Is.EqualTo(savedBoletoId));
 			Assert.That(readBoleto.Fecha, Is.EqualTo(explicitFecha));
 			Assert.That(readBoleto.Monto, Is.EqualTo(1580));
+			Assert.That(readBoleto.Linea, Is.EqualTo("110"));
+			Assert.That(readBoleto.TotalAbonado, Is.EqualTo(1580));
+			Assert.That(readBoleto.Saldo, Is.EqualTo(8420));
+			Assert.That(readBoleto.SaldoRestante, Is.EqualTo(8420));
+			Assert.That(readBoleto.TipoTarjeta, Is.EqualTo("TarjetaNormal"));
 			Assert.That(readBoleto.Colectivo, Is.Not.Null);
 			Assert.That(readBoleto.Colectivo.NroInterno, Is.EqualTo(savedColectivoId));
 			Assert.That(readBoleto.Colectivo.Linea, Is.EqualTo("110"));
@@ -296,6 +368,9 @@ namespace TarjetaSUBE.Tests {
 			readBoleto.Colectivo.Linea = "110 2";
 			readBoleto.Tarjeta.Saldo = 8420;
 			readBoleto.Monto = 1800;
+			readBoleto.TotalAbonado = 1800;
+			readBoleto.SaldoRestante = 8200;
+			readBoleto.Linea = "110 2";
 			_context.SaveChanges();
 			_context.ChangeTracker.Clear();
 
@@ -306,6 +381,9 @@ namespace TarjetaSUBE.Tests {
 
 			Assert.That(reloadedBoleto, Is.Not.Null);
 			Assert.That(reloadedBoleto!.Monto, Is.EqualTo(1800));
+			Assert.That(reloadedBoleto.TotalAbonado, Is.EqualTo(1800));
+			Assert.That(reloadedBoleto.SaldoRestante, Is.EqualTo(8200));
+			Assert.That(reloadedBoleto.Linea, Is.EqualTo("110 2"));
 			Assert.That(reloadedBoleto.Colectivo.Linea, Is.EqualTo("110 2"));
 			Assert.That(reloadedBoleto.Tarjeta.Saldo, Is.EqualTo(8420));
 
