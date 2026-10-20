@@ -9,8 +9,10 @@ namespace TarjetaSUBE
 		public decimal Saldo { get; set; }
 		public int id_beneficio { get; set; } = 1;
 		public virtual TipoTarjeta? TipoTarjeta { get; set; }
-		private readonly static decimal SaldoMaximo = 40000;
+		private readonly static decimal SaldoMaximo = 56000;
 		private readonly static decimal LimiteNegativo = -2000;
+		public decimal SaldoPendiente {get;set;} = 0;
+
 		public bool Pagar(decimal monto)
 		{
 			if((Saldo - monto) < LimiteNegativo)
@@ -20,6 +22,9 @@ namespace TarjetaSUBE
 			}
 			
 			Saldo -= monto;
+
+			AcreditarCarga(); 
+			
 			return true; 
 		}
 
@@ -27,22 +32,34 @@ namespace TarjetaSUBE
 		{
 			if (ValidarCarga(monto))
 			{
-				Saldo += monto;
-				context.SaveChanges();
-				return true;
+			 	SaldoPendiente += monto;
+        		AcreditarCarga();
+        		context.SaveChanges();
+        		return true;
 			}
 			return false;
 		}
 
 		public bool ValidarCarga(decimal monto)
 		{
-			if(Saldo + monto > SaldoMaximo)
-			{
-				Console.WriteLine("El saldo de la tarjeta no puede superar los 40000 pesos.");
-				return false;
-			}
-
 			return CargasPermitidas.Contains(monto);
+		}
+
+		public void AcreditarCarga()
+		{
+    		if (SaldoPendiente <= 0) return;
+    		decimal espacioDisponible = SaldoMaximo - Saldo;
+    		if (espacioDisponible <= 0) return;
+			if (SaldoPendiente <= espacioDisponible)
+			{
+				Saldo += SaldoPendiente;
+				SaldoPendiente = 0;
+			}
+			else
+			{
+				Saldo = SaldoMaximo;
+				SaldoPendiente -= espacioDisponible;
+			}
 		}
 
 

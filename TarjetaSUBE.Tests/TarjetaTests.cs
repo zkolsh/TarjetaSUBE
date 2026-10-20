@@ -57,16 +57,6 @@ namespace TarjetaSUBE.Tests
 			Assert.That(esValido, Is.False);
 		}
 
-		[Test]
-		public void ValidarCarga_SuperandoSaldoMaximoDe40000_RetornaFalse()
-		{
-			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 35000 };
-
-			// 35000 + 10000 = 45000 > 40000
-			bool esValido = tarjeta.ValidarCarga(10000);
-
-			Assert.That(esValido, Is.False);
-		}
 
 		[TestCase(2000)]
 		[TestCase(3000)]
@@ -182,6 +172,94 @@ namespace TarjetaSUBE.Tests
 			Assert.That(tarjetaEnDb!.Saldo, Is.EqualTo(420));
 		}
 
+		[Test]
+		public void FranquiciaCompleta_SiemprePuedePagarBoleto()
+		{
+			var franquiciaCompleta = new FranquiciaCompleta
+			{
+				id = 1,
+				nombre = "Franquicia Completa",
+				porcentaje_descuento = 100
+			};
+			_context.TiposTarjetas.Add(franquiciaCompleta);
+			_context.SaveChanges();
+
+			decimal tarifaNormal = 1580;
+			decimal montoAPagar = tarifaNormal * (1 - ((decimal)franquiciaCompleta.porcentaje_descuento / 100m));
+
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -2000 };
+
+			bool resultado = tarjeta.Pagar(montoAPagar);
+
+			Assert.That(montoAPagar, Is.EqualTo(0));
+			Assert.That(resultado, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-2000));
+		}
+
+		[Test]
+		public void MedioBoleto_MontoDelBoletoEsSiempreLaMitadDelNormal()
+		{
+			var medioBoleto = new MedioBoletoEstudiantil
+			{
+				id = 2,
+				nombre = "Medio Boleto Estudiantil",
+				porcentaje_descuento = 50
+			};
+			_context.TiposTarjetas.Add(medioBoleto);
+			_context.SaveChanges();
+
+			decimal tarifaNormal = 1580;
+			decimal montoAPagar = tarifaNormal * (1 - ((decimal)medioBoleto.porcentaje_descuento / 100m));
+
+			Assert.That(montoAPagar, Is.EqualTo(tarifaNormal / 2));
+		}
+
+		[Test]
+		public void CargarTarjeta_SuperandoMaximoPermitido_AcreditaHasta56000YExcedenteQuedaPendiente()
+		{
+			// Tarjeta con 50.000 de saldo inicial
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 50000 };
+			_context.Tarjetas.Add(tarjeta);
+			_context.SaveChanges();
+
+			// Se carga un monto permitido de 10.000 (50.000 + 10.000 = 60.000 > 56.000)
+			bool resultado = tarjeta.CargarTarjeta(10000, _context);
+
+			Assert.That(resultado, Is.True);
+
+			// Debe acreditarse hasta el tope máximo permitido (56000)
+			Assert.That(tarjeta.Saldo, Is.EqualTo(56000), "El saldo debe alcanzar el tope máximo de 56000.");
+			
+			// El excedente restante (4000) debe quedar almacenado y pendiente de acreditación
+			Assert.That(tarjeta.SaldoPendiente, Is.EqualTo(4000), "El excedente debe quedar almacenado en SaldoPendiente.");
+			
+			// Verificamos que también persista en la base de datos
+			var tarjetaEnDb = _context.Tarjetas.Find(tarjeta.Id);
+			Assert.That(tarjetaEnDb!.Saldo, Is.EqualTo(56000));
+			Assert.That(tarjetaEnDb.SaldoPendiente, Is.EqualTo(4000));
+		}
 		
+		[Test]
+		public void Pagar_ConSaldoPendiente_AcreditaAutomaticamenteHastaElMaximoLuegoDelViaje()
+		{
+    		// Tarjeta al tope máximo (56.000) y con 4.000 pendientes
+    		var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 56000, SaldoPendiente = 4000 };
+    		_context.Tarjetas.Add(tarjeta);
+    		_context.SaveChanges();
+
+    		// Realiza un viaje con tarifa normal de 1580
+    		bool viajeExitoso = tarjeta.Pagar(1580);
+			
+    		Assert.That(viajeExitoso, Is.True);
+
+    		// Gastó 1580, pero acreditó 1580 de lo pendiente: el saldo vuelve a llenarse hasta 56.000
+    		Assert.That(tarjeta.Saldo, Is.EqualTo(56000), "Luego del viaje debe recargar hasta el máximo nuevamente.");
+    		
+			// El saldo pendiente bajó de 4000 a 2420 (4000 - 1580)
+    		Assert.That(tarjeta.SaldoPendiente, Is.EqualTo(2420), "El saldo pendiente debe descontar lo que se acreditó.");
+		}
+
+		
+
 	}
 }
