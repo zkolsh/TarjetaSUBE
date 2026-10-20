@@ -61,7 +61,7 @@ namespace TarjetaSUBE.Tests {
 			_context.Tarjetas.Add(tarjeta);
 	
 
-			bool resultado = colectivo.pagarCon(_context, tarjeta);
+			bool resultado = colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
 			// 5000 - 1580 = 3420
@@ -83,7 +83,7 @@ namespace TarjetaSUBE.Tests {
 
 			_context.Tarjetas.Add(tarjeta);
 
-			bool resultado = colectivo.pagarCon(_context, tarjeta);
+			bool resultado = colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.False);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-1000));
@@ -100,7 +100,7 @@ namespace TarjetaSUBE.Tests {
 
 			_context.Tarjetas.Add(tarjeta);
 
-			bool resultado = colectivo.pagarCon(_context, tarjeta);
+			bool resultado = colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-1580));
@@ -262,7 +262,7 @@ namespace TarjetaSUBE.Tests {
             _context.Tarjetas.Add(tarjeta);
             _context.SaveChanges();
           
-            bool resultado = colectivo.pagarCon(_context, tarjeta);
+            bool resultado = colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
             Assert.That(resultado, Is.True, "Franquicia completa siempre debe poder pagar en el colectivo.");
             Assert.That(tarjeta.Saldo, Is.EqualTo(-2000), "No debe descontar saldo.");
             var boletoEmitido = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);

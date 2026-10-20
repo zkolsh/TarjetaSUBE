@@ -50,9 +50,11 @@ namespace TarjetaSUBE.Tests
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			DateTime antesDelViaje = DateTime.Now.AddSeconds(-1);
-			bool resultado = _colectivo.pagarCon(_context, tarjeta);
-			DateTime despuesDelViaje = DateTime.Now.AddSeconds(1);
+			ProveedorFechaSimulado fecha = new();
+			DateTime antesDelViaje = fecha.FechaActual;
+			bool resultado = _colectivo.pagarCon(_context, tarjeta, fecha);
+			fecha.AdelantarMinutos(10);
+			DateTime despuesDelViaje = fecha.FechaActual;
 
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(3420));
@@ -92,7 +94,7 @@ namespace TarjetaSUBE.Tests
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta);
+			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(1210)); // 2000 - 790
@@ -128,7 +130,7 @@ namespace TarjetaSUBE.Tests
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta);
+			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(1000));
@@ -163,7 +165,7 @@ namespace TarjetaSUBE.Tests
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta);
+			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(0));
@@ -198,7 +200,7 @@ namespace TarjetaSUBE.Tests
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta);
+			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
 			// Saldo restante: -200 - 1580 = -1780
@@ -234,7 +236,7 @@ namespace TarjetaSUBE.Tests
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta);
+			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
 			// Saldo restante: -1000 - 790 = -1790
