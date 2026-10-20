@@ -44,5 +44,7 @@ namespace TarjetaSUBE
 
 			return CargasPermitidas.Contains(monto);
 		}
+
+
 	}
 }
