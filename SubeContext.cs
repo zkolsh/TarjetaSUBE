@@ -22,13 +22,21 @@ namespace TarjetaSUBE {
 				entity.ToTable("Boleto");
 				entity.HasKey(e => e.Id);
 
+				entity.Property(e => e.Fecha).IsRequired();
+				entity.Property(e => e.Linea).IsRequired();
+				entity.Property(e => e.Monto).IsRequired();
+				entity.Property(e => e.TotalAbonado).IsRequired();
+				entity.Property(e => e.Saldo).IsRequired();
+				entity.Property(e => e.SaldoRestante).IsRequired();
+				entity.Property(e => e.TipoTarjeta).IsRequired();
+
 				entity.HasOne(e => e.Colectivo)
 					.WithMany()
 					.HasForeignKey("ColectivoId");
 
 				entity.HasOne(e => e.Tarjeta)
 					.WithMany()
-					.HasForeignKey("TarjetaId");
+					.HasForeignKey(e => e.TarjetaId);
 			});
 
 			modelBuilder.Entity<Colectivo>()
