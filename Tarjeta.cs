@@ -45,11 +45,12 @@ namespace TarjetaSUBE
 			return CargasPermitidas.Contains(monto);
 		}
 
-		public void AcreditarCarga()
+		public decimal AcreditarCarga()
 		{
-    		if (SaldoPendiente <= 0) return;
+    		if (SaldoPendiente <= 0) return 0;
     		decimal espacioDisponible = SaldoMaximo - Saldo;
-    		if (espacioDisponible <= 0) return;
+    		if (espacioDisponible <= 0) return 0;
+			decimal saldoPrevio = Saldo;
 			if (SaldoPendiente <= espacioDisponible)
 			{
 				Saldo += SaldoPendiente;
@@ -60,6 +61,13 @@ namespace TarjetaSUBE
 				Saldo = SaldoMaximo;
 				SaldoPendiente -= espacioDisponible;
 			}
+			if(saldoPrevio >= 0){
+				return 0;
+			}
+			if(Saldo >= 0){
+			    return  Math.Abs(saldoPrevio);
+			}
+			return Saldo - saldoPrevio;
 		}
 
 

@@ -7,7 +7,8 @@ namespace TarjetaSUBE.Tests
 	public class TarjetaTests
 	{
         private SubeContext _context = null!;
-        
+        private decimal tarifaNormal;
+
 		[SetUp]
 		public void Setup()
 		{
@@ -16,6 +17,7 @@ namespace TarjetaSUBE.Tests
 				.Options;
 
 			_context = new SubeContext(options);
+			tarifaNormal = 1580;
 		}
 
 		[TearDown]
@@ -103,10 +105,10 @@ namespace TarjetaSUBE.Tests
 		{
 			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = monto };
 
-			bool resultado = tarjeta.Pagar(1580);
+			bool resultado = tarjeta.Pagar(tarifaNormal);
 
 			Assert.That(resultado, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo((monto-1580)));
+			Assert.That(tarjeta.Saldo, Is.EqualTo((monto-tarifaNormal)));
 		}
 
 		[Test]
@@ -114,7 +116,7 @@ namespace TarjetaSUBE.Tests
 		{
 			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -1000 };
 
-			bool resultado = tarjeta.Pagar(1580);
+			bool resultado = tarjeta.Pagar(tarifaNormal);
 
 			Assert.That(resultado, Is.False);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-1000));
@@ -125,7 +127,7 @@ namespace TarjetaSUBE.Tests
 		{
 			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -420 };
 
-			bool resultado = tarjeta.Pagar(1580);
+			bool resultado = tarjeta.Pagar(tarifaNormal);
 
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-2000));
@@ -136,13 +138,13 @@ namespace TarjetaSUBE.Tests
 		{
 			// Tarjeta con saldo 0: realiza un primer viaje plus (-1580, permitido ya que no supera -2000)
 			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 0 };
-			bool primerViaje = tarjeta.Pagar(1580);
+			bool primerViaje = tarjeta.Pagar(tarifaNormal);
 
 			Assert.That(primerViaje, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-1580));
 
 			// Segundo viaje: -1580 - 1580 = -3160 (menor a -2000, no permitido)
-			bool segundoViaje = tarjeta.Pagar(1580);
+			bool segundoViaje = tarjeta.Pagar(tarifaNormal);
 
 			Assert.That(segundoViaje, Is.False);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-1580));
@@ -156,7 +158,7 @@ namespace TarjetaSUBE.Tests
 			_context.SaveChanges();
 
 			// Realiza un viaje con saldo cero, quedando en saldo negativo (-1580)
-			bool viajeExitoso = tarjeta.Pagar(1580);
+			bool viajeExitoso = tarjeta.Pagar(tarifaNormal);
 			Assert.That(viajeExitoso, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-1580));
 
@@ -184,14 +186,13 @@ namespace TarjetaSUBE.Tests
 			_context.TiposTarjetas.Add(franquiciaCompleta);
 			_context.SaveChanges();
 
-			decimal tarifaNormal = 1580;
-			decimal montoAPagar = tarifaNormal * (1 - ((decimal)franquiciaCompleta.porcentaje_descuento / 100m));
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -2000, TipoTarjeta = franquiciaCompleta };
 
-			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -2000 };
+			decimal monto = tarjeta.TipoTarjeta.CalcularMonto(tarifaNormal);
 
-			bool resultado = tarjeta.Pagar(montoAPagar);
+			bool resultado = tarjeta.Pagar(monto);
 
-			Assert.That(montoAPagar, Is.EqualTo(0));
+			Assert.That(monto, Is.EqualTo(0));
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-2000));
 		}
@@ -205,13 +206,18 @@ namespace TarjetaSUBE.Tests
 				nombre = "Medio Boleto Estudiantil",
 				porcentaje_descuento = 50
 			};
+
 			_context.TiposTarjetas.Add(medioBoleto);
 			_context.SaveChanges();
 
-			decimal tarifaNormal = 1580;
-			decimal montoAPagar = tarifaNormal * (1 - ((decimal)medioBoleto.porcentaje_descuento / 100m));
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 0, TipoTarjeta = medioBoleto };
 
-			Assert.That(montoAPagar, Is.EqualTo(tarifaNormal / 2));
+			decimal monto = tarjeta.TipoTarjeta.CalcularMonto(tarifaNormal);
+            bool resultado = tarjeta.Pagar(monto);
+
+			Assert.That(monto, Is.EqualTo(tarifaNormal / 2));
+			Assert.That(resultado, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo((0 - monto)));
 		}
 
 		[Test]
@@ -258,6 +264,46 @@ namespace TarjetaSUBE.Tests
 			// El saldo pendiente bajó de 4000 a 2420 (4000 - 1580)
     		Assert.That(tarjeta.SaldoPendiente, Is.EqualTo(2420), "El saldo pendiente debe descontar lo que se acreditó.");
 		}
+
+		[Test]
+		public void AcreditarCarga_ConSaldoNegativoQuePasaAPositivo_RetornaMontoRecuperadoHastaCero()
+		{
+			// Tarjeta con saldo negativo de -500 y carga pendiente de 2000
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -500, SaldoPendiente = 2000 };
+			decimal recuperadoNegativo = tarjeta.AcreditarCarga();
+
+			// Debe recuperar los 500 negativos para llegar a 0
+			Assert.That(recuperadoNegativo, Is.EqualTo(500));
+			Assert.That(tarjeta.Saldo, Is.EqualTo(1500));
+			Assert.That(tarjeta.SaldoPendiente, Is.EqualTo(0));
+		}
+
+		[Test]
+		public void AcreditarCarga_ConSaldoNegativoQueSigueEnNegativo_RetornaTotalAcreditado()
+		{
+			// Tarjeta con saldo negativo de -1500 y carga pendiente de 500
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = -1500, SaldoPendiente = 500 };
+			decimal recuperadoNegativo = tarjeta.AcreditarCarga();
+
+			// Sube de -1500 a -1000, cubrió 500 de negativo
+			Assert.That(recuperadoNegativo, Is.EqualTo(500));
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-1000));
+			Assert.That(tarjeta.SaldoPendiente, Is.EqualTo(0));
+		}
+
+		[Test]
+		public void AcreditarCarga_ConSaldoPositivoPrevio_RetornaCero()
+		{
+			// Tarjeta con saldo positivo previo
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 1000, SaldoPendiente = 2000 };
+			decimal recuperadoNegativo = tarjeta.AcreditarCarga();
+			
+			// No tenía saldo negativo por cubrir
+			Assert.That(recuperadoNegativo, Is.EqualTo(0));
+			Assert.That(tarjeta.Saldo, Is.EqualTo(3000));
+			Assert.That(tarjeta.SaldoPendiente, Is.EqualTo(0));
+		}
+
 
 		
 

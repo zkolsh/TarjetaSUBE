@@ -4,7 +4,15 @@ namespace TarjetaSUBE.Tests
 {
     public class TipoTarjetaTests
     {
-        private const decimal TarifaBasica = 1580m;
+        private decimal tarifaNormal;
+       
+        [SetUp]
+		public void Setup()
+		{
+			tarifaNormal = 1580;
+		}
+
+
         [Test]
         public void CalcularMonto_TarjetaNormal_DevuelveTarifaCompleta()
         {
@@ -14,8 +22,8 @@ namespace TarjetaSUBE.Tests
                 nombre = "Normal",
                 porcentaje_descuento = 0
             };
-            decimal resultado = tipo.CalcularMonto(TarifaBasica);
-            Assert.That(resultado, Is.EqualTo(1580m));
+            decimal resultado = tipo.CalcularMonto(tarifaNormal);
+            Assert.That(resultado, Is.EqualTo(tarifaNormal));
         }
 
         [Test]
@@ -27,8 +35,8 @@ namespace TarjetaSUBE.Tests
                 nombre = "Medio Boleto",
                 porcentaje_descuento = 50
             };
-            decimal resultado = tipo.CalcularMonto(TarifaBasica);
-            Assert.That(resultado, Is.EqualTo(790m));
+            decimal resultado = tipo.CalcularMonto(tarifaNormal);
+            Assert.That(resultado, Is.EqualTo(tarifaNormal / 2));
         }
 
         [Test]
@@ -40,7 +48,7 @@ namespace TarjetaSUBE.Tests
                 nombre = "Franquicia Completa",
                 porcentaje_descuento = 100
             };
-            decimal resultado = tipo.CalcularMonto(TarifaBasica);
+            decimal resultado = tipo.CalcularMonto(tarifaNormal);
             Assert.That(resultado, Is.EqualTo(0m));
         }
 
@@ -53,7 +61,7 @@ namespace TarjetaSUBE.Tests
                 nombre = "Boleto Gratuito",
                 porcentaje_descuento = 100
             };
-            decimal resultado = tipo.CalcularMonto(TarifaBasica);
+            decimal resultado = tipo.CalcularMonto(tarifaNormal);
             Assert.That(resultado, Is.EqualTo(0m));
         }
     }

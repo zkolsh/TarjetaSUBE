@@ -10,6 +10,7 @@ namespace TarjetaSUBE.Tests {
         private Colectivo colectivo = null!;
         private ProveedorFechaSimulado reloj = null!;
         private MedioBoletoEstudiantil medioBoleto = null!;
+        private decimal tarifaNormal; 
 
         private BoletoGratuitoEstudiantil boletoGratuito = null!;
         [SetUp]
@@ -45,6 +46,8 @@ namespace TarjetaSUBE.Tests {
 
             _context.TiposTarjetas.Add(boletoGratuito);
             _context.SaveChanges();
+
+            tarifaNormal = 1580m;
 		}
 
 		[TearDown]
@@ -71,7 +74,7 @@ namespace TarjetaSUBE.Tests {
 			Assert.That(boletos.Count, Is.EqualTo(1));
 
 			var boleto = boletos.First();
-			Assert.That(boleto.Monto, Is.EqualTo(1580));
+			Assert.That(boleto.Monto, Is.EqualTo(tarifaNormal));
 			Assert.That(boleto.Colectivo.NroInterno, Is.EqualTo(101));
 			Assert.That(boleto.Tarjeta.Id, Is.EqualTo(tarjeta.Id));
 		}
