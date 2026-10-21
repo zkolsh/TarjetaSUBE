@@ -2,7 +2,7 @@
 	public class Colectivo {
 		public int NroInterno { get; set; }
 		public required string Linea { get; set; }
-		public static decimal tarifaBasica = 1580;
+		public static decimal tarifaBasica = 2150m;
 
 		public bool pagarCon(SubeContext context, Tarjeta tarjeta, IProveedorFecha proveedor) {
 			tarjeta.TipoTarjeta ??= context.TiposTarjetas.Find(tarjeta.id_beneficio);
