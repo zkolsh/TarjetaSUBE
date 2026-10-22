@@ -47,7 +47,7 @@ namespace TarjetaSUBE.Tests {
             _context.TiposTarjetas.Add(boletoGratuito);
             _context.SaveChanges();
 
-            tarifaNormal = 1580m;
+            tarifaNormal = 2150m;
 		}
 
 		[TearDown]
@@ -67,8 +67,8 @@ namespace TarjetaSUBE.Tests {
 			bool resultado = colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
-			// 5000 - 1580 = 3420
-			Assert.That(tarjeta.Saldo, Is.EqualTo(3420));
+			// 5000 - 2150 = 2850
+			Assert.That(tarjeta.Saldo, Is.EqualTo(2850));
 
 			var boletos = _context.Boletos.Include(b => b.Colectivo).Include(b => b.Tarjeta).ToList();
 			Assert.That(boletos.Count, Is.EqualTo(1));
@@ -97,18 +97,19 @@ namespace TarjetaSUBE.Tests {
 
 
         [Test]
-		public void PagarCon_ConSaldoCero_PermiteViajePlusCreaBoletoYQuedaEnSaldoNegativo()
+		public void PagarCon_ConSaldoInsuficiente_PermiteViajePlusCreaBoletoYQuedaEnSaldoNegativo()
 		{
-			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 0 };
+			var tarjeta = new Tarjeta { dniUsuario = 12345678, Saldo = 200 };
 
 			_context.Tarjetas.Add(tarjeta);
 
 			bool resultado = colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(-1580));
+			Assert.That(tarjeta.Saldo, Is.EqualTo(-1950)); // 200 - 2150
 			Assert.That(_context.Boletos.Count(), Is.EqualTo(1));
 		}
+
         [Test]
         public void MedioBoleto_SoloPermiteDosViajesPorDiaConDescuento_ElTerceroPagaNormal()
         {
@@ -123,28 +124,28 @@ namespace TarjetaSUBE.Tests {
             _context.Tarjetas.Add(tarjeta);
             _context.SaveChanges();
 
-            // 1er viaje: 08:00 -> paga $790
+            // 1er viaje: 08:00 -> paga $1075
             bool viaje1 = colectivo.pagarCon(_context, tarjeta, reloj);
             Assert.That(viaje1, Is.True);
-            Assert.That(tarjeta.Saldo, Is.EqualTo(10000 - 790)); // 9210
+            Assert.That(tarjeta.Saldo, Is.EqualTo(10000 - 1075)); // 8925
             
-            // 2do viaje: 09:00 (mismo día) -> paga $790
+            // 2do viaje: 09:00 (mismo día) -> paga $1075
             reloj.AdelantarMinutos(60);
             bool viaje2 = colectivo.pagarCon(_context, tarjeta, reloj);
             Assert.That(viaje2, Is.True);
-            Assert.That(tarjeta.Saldo, Is.EqualTo(9210 - 790)); // 8420
+            Assert.That(tarjeta.Saldo, Is.EqualTo(8925 - 1075)); //7850
             
-            // 3er viaje: 12:00 (mismo día) -> paga tarifa normal $1580
+            // 3er viaje: 12:00 (mismo día) -> paga tarifa normal $2150
             reloj.AdelantarMinutos(180);
             bool viaje3 = colectivo.pagarCon(_context, tarjeta, reloj);
             Assert.That(viaje3, Is.True);
-            Assert.That(tarjeta.Saldo, Is.EqualTo(8420 - 1580)); // 6840
+            Assert.That(tarjeta.Saldo, Is.EqualTo(7850 - 2150)); //5700
             
-            // 4to viaje: al día siguiente (08:00) -> se resetea y vuelve a pagar $790
+            // 4to viaje: al día siguiente (08:00) -> se resetea y vuelve a pagar $1075
             reloj.AdelantarDias(1);
             bool viaje4 = colectivo.pagarCon(_context, tarjeta, reloj);
             Assert.That(viaje4, Is.True);
-            Assert.That(tarjeta.Saldo, Is.EqualTo(6840 - 790)); // 6050
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5700 - 1075)); //4625
         }
 
         [Test]
@@ -160,23 +161,25 @@ namespace TarjetaSUBE.Tests {
 
             _context.Tarjetas.Add(tarjeta);
             _context.SaveChanges();
+
+
             // 1er viaje: 08:00 -> Pasa
             bool viaje1 = colectivo.pagarCon(_context, tarjeta, reloj);
             Assert.That(viaje1, Is.True);
-            Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 790)); // 4210
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 1075)); // 3925
           
             // 2do viaje: 08:03 (pasaron solo 3 min) -> Rebota
             reloj.AdelantarMinutos(3);
             bool viaje2 = colectivo.pagarCon(_context, tarjeta, reloj);
             Assert.That(viaje2, Is.False);
-            Assert.That(tarjeta.Saldo, Is.EqualTo(4210)); // El saldo no se descuenta
+            Assert.That(tarjeta.Saldo, Is.EqualTo(3925)); // El saldo no se descuenta
            
             
             // 3er intento: 08:06 (pasaron 6 min desde el 1ero) -> Pasa
             reloj.AdelantarMinutos(3);
             bool viaje3 = colectivo.pagarCon(_context, tarjeta, reloj);
             Assert.That(viaje3, Is.True);
-            Assert.That(tarjeta.Saldo, Is.EqualTo(4210 - 790)); // 3420
+            Assert.That(tarjeta.Saldo, Is.EqualTo(3925 - 1075)); //2850
         }
 
         [Test]
@@ -236,14 +239,14 @@ namespace TarjetaSUBE.Tests {
             Assert.That(colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
             Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
 
-            // 3er viaje (10:00, posterior al 2do): cobra precio completo ($1580)
+            // 3er viaje (10:00, posterior al 2do): cobra precio completo ($2150)
             reloj.AdelantarMinutos(60);
             Assert.That(colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
-            Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 1580)); // 3420
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 2150)); //2850
             
-            // Verificamos que el boleto emitido para este 3er viaje registró el monto completo ($1580)
+            // Verificamos que el boleto emitido para este 3er viaje registró el monto completo ($2150)
             var boletoTercerViaje = _context.Boletos.OrderByDescending(b => b.Fecha).First();
-            Assert.That(boletoTercerViaje.Monto, Is.EqualTo(1580));
+            Assert.That(boletoTercerViaje.Monto, Is.EqualTo(2150));
         }
 
         [Test]
@@ -289,11 +292,11 @@ namespace TarjetaSUBE.Tests {
             // 1. Debe permitir el viaje
             Assert.That(resultado, Is.True);
 
-            // 2. Descuenta exactamente la mitad (1580 / 2 = 790) -> 5000 - 790 = 4210
-            Assert.That(tarjeta.Saldo, Is.EqualTo(4210));
-            // 3. El boleto emitido tiene registrado el monto de 790
+            // 2. Descuenta exactamente la mitad (2150 / 2 = 1075) -> 5000 - 1075 = 3925
+            Assert.That(tarjeta.Saldo, Is.EqualTo(3925));
+            // 3. El boleto emitido tiene registrado el monto de 1075
             var boletoEmitido = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
-            Assert.That(boletoEmitido.Monto, Is.EqualTo(790));
+            Assert.That(boletoEmitido.Monto, Is.EqualTo(1075));
         }
     }
 }
