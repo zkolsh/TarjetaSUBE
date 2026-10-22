@@ -4,7 +4,7 @@ namespace TarjetaSUBE {
 		public required string nombre {get; set;}
 		public required float porcentaje_descuento {get; set;}
 
-        public decimal CalcularMonto(decimal tarifaBasica)
+        public virtual decimal CalcularMonto(decimal tarifaBasica,int viajesMes = 0)
         {
             return tarifaBasica * (1 - ((decimal)porcentaje_descuento / 100m));
         }

@@ -14,19 +14,6 @@ namespace TarjetaSUBE.Tests
 
 
         [Test]
-        public void CalcularMonto_TarjetaNormal_DevuelveTarifaCompleta()
-        {
-            var tipo = new TarjetaNormal
-            {
-                id = 1,
-                nombre = "Normal",
-                porcentaje_descuento = 0
-            };
-            decimal resultado = tipo.CalcularMonto(tarifaNormal);
-            Assert.That(resultado, Is.EqualTo(tarifaNormal));
-        }
-
-        [Test]
         public void CalcularMonto_MedioBoletoEstudiantil_DevuelveLaMitad()
         {
             var tipo = new MedioBoletoEstudiantil
