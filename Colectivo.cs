@@ -49,7 +49,13 @@
 				return tarifaBasica;
 			}
 
-			return tarjeta.TipoTarjeta?.CalcularMonto(tarifaBasica) ?? tarifaBasica;
+			    int viajesMes = context.Boletos.Count(b => 
+								b.Tarjeta.Id == tarjeta.Id && 
+								b.Fecha.Month == fechaActual.Month && 
+								b.Fecha.Year == fechaActual.Year);
+
+
+			return tarjeta.TipoTarjeta?.CalcularMonto(tarifaBasica, viajesMes) ?? tarifaBasica;
 		}
 
 		private bool EsIntervaloMenorACincoMinutos(SubeContext context, int tarjetaId, DateTime fecha) {
