@@ -9,7 +9,7 @@ namespace TarjetaSUBE.Tests
         [SetUp]
 		public void Setup()
 		{
-			tarifaNormal = 1580;
+			tarifaNormal = 2150;
 		}
 
 
