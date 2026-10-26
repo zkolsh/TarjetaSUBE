@@ -13,5 +13,6 @@ namespace TarjetaSUBE
 		public int TarjetaId { get; set; }
 		public required Tarjeta Tarjeta { get; set; }
 		public required string TipoTarjeta { get; set; }
+		public bool EsTrasbordo { get; set; } = false;
 	}
 }

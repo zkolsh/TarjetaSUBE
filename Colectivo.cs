@@ -4,7 +4,7 @@ namespace TarjetaSUBE {
 		public required string Linea { get; set; }
 		public static decimal tarifaBasica = 2150m;
 
-		public bool pagarCon(SubeContext context, Tarjeta tarjeta, IProveedorFecha proveedor) {
+		public bool pagarCon(SubeContext context, Tarjeta tarjeta, IProveedorFecha proveedor, IServicioTrasbordo? servicioTrasbordo = null) {
 			tarjeta.TipoTarjeta ??= context.TiposTarjetas.Find(tarjeta.id_beneficio);
 
 			proveedor ??= new ProveedorDeFechaSistema();
@@ -14,7 +14,10 @@ namespace TarjetaSUBE {
 				return false;
 			}
 
-			decimal monto = tarjeta.TipoTarjeta?.CalcularTarifa(context, tarjeta, fechaActual, tarifaBasica) ?? tarifaBasica;
+			servicioTrasbordo ??= new ServicioTrasbordo();
+			bool esTrasbordo = servicioTrasbordo.EsTrasbordoValido(context, tarjeta, Linea, fechaActual);
+
+			decimal monto = esTrasbordo ? 0m : (tarjeta.TipoTarjeta?.CalcularTarifa(context, tarjeta, fechaActual, tarifaBasica) ?? tarifaBasica);
 			decimal saldoPrevio = tarjeta.Saldo;
 
 			if (tarjeta.Pagar(monto)) {
@@ -33,6 +36,7 @@ namespace TarjetaSUBE {
 					Saldo = tarjeta.Saldo,
 					SaldoRestante = tarjeta.Saldo,
 					Tarjeta = tarjeta,
+					EsTrasbordo = esTrasbordo,
 				};
 
 				context.Boletos.Add(boleto);
