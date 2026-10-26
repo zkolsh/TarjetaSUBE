@@ -4,8 +4,8 @@ using System.Text;
 
 namespace TarjetaSUBE
 {
-    public class ProveedorDeFechaSistema : IProveedorFecha
-    {
-        public DateTime Ahora => DateTime.Now;
-    }
+	public class ProveedorDeFechaSistema : IProveedorFecha
+	{
+		public DateTime Ahora => DateTime.Now;
+	}
 }
