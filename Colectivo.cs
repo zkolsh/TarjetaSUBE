@@ -3,10 +3,15 @@ namespace TarjetaSUBE {
 		public int NroInterno { get; set; }
 		public required string Linea { get; set; }
 		public static decimal tarifaBasica = 2150m;
-		private decimal? _tarifaBase;
+		private decimal? _tarifa;
+		public decimal Tarifa {
+			get => _tarifa ?? tarifaBasica;
+			set => _tarifa = value;
+		}
 
-		public virtual decimal ObtenerTarifaBase() => _tarifaBase ?? tarifaBasica;
-		public void AsignarTarifaBase(decimal tarifa) => _tarifaBase = tarifa;
+		public virtual decimal ObtenerTarifaBase() => Tarifa;
+		public void AsignarTarifaBase(decimal tarifa) => Tarifa = tarifa;
+
 
 
 		public bool pagarCon(SubeContext context, Tarjeta tarjeta, IProveedorFecha proveedor) {
