@@ -26,7 +26,7 @@ namespace TarjetaSUBE.Tests {
 
             reloj = new ProveedorFechaSimulado
             {
-                FechaActual = new DateTime(2026, 10, 17, 8, 0, 0)
+                FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
             };
            
             medioBoleto = new MedioBoletoEstudiantil
@@ -268,7 +268,7 @@ namespace TarjetaSUBE.Tests {
             _context.Tarjetas.Add(tarjeta);
             _context.SaveChanges();
           
-            bool resultado = colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
+            bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
             Assert.That(resultado, Is.True, "Franquicia completa siempre debe poder pagar en el colectivo.");
             Assert.That(tarjeta.Saldo, Is.EqualTo(-2000), "No debe descontar saldo.");
             var boletoEmitido = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
@@ -297,6 +297,154 @@ namespace TarjetaSUBE.Tests {
             // 3. El boleto emitido tiene registrado el monto de 1075
             var boletoEmitido = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
             Assert.That(boletoEmitido.Monto, Is.EqualTo(1075));
+        }
+
+        [Test]
+        public void Franquicias_FueraDeFranjaHoraria_TransaccionFallaCompleta()
+        {
+            var franquicia = new FranquiciaCompleta
+            {
+                id = 4,
+                nombre = "Franquicia Completa",
+                porcentaje_descuento = 100
+            };
+            _context.TiposTarjetas.Add(franquicia);
+
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 99887766,
+                Saldo = 5000,
+                TipoTarjeta = franquicia
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            // Sábado a las 10:00 (fuera de la franja)
+            reloj.FechaActual = new DateTime(2026, 10, 24, 10, 0, 0);
+
+            bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(resultado, Is.False, "No debe permitir pagar con franquicia en día sábado.");
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000), "El saldo no debe verse afectado.");
+            Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0), "No debe emitirse ningún boleto.");
+        }
+
+        [Test]
+        public void MedioBoleto_FueraDeFranjaHoraria_NoPuedePagarEnSabado()
+        {
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 12345678,
+                Saldo = 5000,
+                TipoTarjeta = medioBoleto
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            // Sábado 10:00
+            reloj.FechaActual = new DateTime(2026, 10, 24, 10, 0, 0);
+
+            bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(resultado, Is.False);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
+            Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void MedioBoleto_AntesDeLasSeis_NoPuedePagar()
+        {
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 12345678,
+                Saldo = 5000,
+                TipoTarjeta = medioBoleto
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            // Lunes 05:59:59
+            reloj.FechaActual = new DateTime(2026, 10, 19, 5, 59, 59);
+
+            bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(resultado, Is.False);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
+            Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void MedioBoleto_DespuesDeLasVeintidos_NoPuedePagar()
+        {
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 12345678,
+                Saldo = 5000,
+                TipoTarjeta = medioBoleto
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            // Martes 22:00:01
+            reloj.FechaActual = new DateTime(2026, 10, 20, 22, 0, 1);
+
+            bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(resultado, Is.False);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
+            Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void BoletoGratuito_FueraDeFranjaHoraria_NoPuedePagar()
+        {
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 22334455,
+                Saldo = 5000,
+                TipoTarjeta = boletoGratuito
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            // Domingo 14:00
+            reloj.FechaActual = new DateTime(2026, 10, 25, 14, 0, 0);
+
+            bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(resultado, Is.False);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
+            Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void TarjetaNormal_FueraDeFranjaHorariaDeFranquicias_PuedePagarSiempre()
+        {
+            var tarjetaNormal = new TarjetaNormal
+            {
+                id = 1,
+                nombre = "TarjetaNormal",
+                porcentaje_descuento = 0
+            };
+            _context.TiposTarjetas.Add(tarjetaNormal);
+
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 11112222,
+                Saldo = 5000,
+                TipoTarjeta = tarjetaNormal
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            // Domingo a las 23:00 (fuera de la franja de franquicias)
+            reloj.FechaActual = new DateTime(2026, 10, 25, 23, 0, 0);
+
+            bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(resultado, Is.True, "TarjetaNormal funciona 24/7.");
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 2150));
+            Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(1));
         }
     }
 }

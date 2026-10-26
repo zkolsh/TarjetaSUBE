@@ -1,6 +1,12 @@
 namespace TarjetaSUBE {
 	public class MedioBoletoEstudiantil: TipoTarjeta {
+		private static readonly IFranjaHoraria FranjaHoraria = new FranjaHorariaFranquicias();
+
 		public override bool PuedeViajar(SubeContext context, int tarjetaId, DateTime fechaActual) {
+			if (!FranjaHoraria.Contiene(fechaActual)) {
+				return false;
+			}
+
 			var ultimoBoleto = context.Boletos
 				.Where(b => b.Tarjeta.Id == tarjetaId)
 				.OrderByDescending(b => b.Fecha)

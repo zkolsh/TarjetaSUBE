@@ -9,6 +9,7 @@ namespace TarjetaSUBE.Tests
 	{
 		private SubeContext _context = null!;
 		private Colectivo _colectivo = null!;
+		private ProveedorFechaSimulado _fechaSimulada = null!;
 
 		[SetUp]
 		public void Setup()
@@ -21,6 +22,11 @@ namespace TarjetaSUBE.Tests
 			_colectivo = new Colectivo { NroInterno = 101, Linea = "102 Negra" };
 			_context.Colectivos.Add(_colectivo);
 			_context.SaveChanges();
+
+			_fechaSimulada = new ProveedorFechaSimulado
+			{
+				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
+			};
 		}
 
 		[TearDown]
@@ -94,7 +100,7 @@ namespace TarjetaSUBE.Tests
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
+			bool resultado = _colectivo.pagarCon(_context, tarjeta, _fechaSimulada);
 
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(925)); // 2000 - 1075
@@ -130,7 +136,7 @@ namespace TarjetaSUBE.Tests
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
+			bool resultado = _colectivo.pagarCon(_context, tarjeta, _fechaSimulada);
 
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(1000));
@@ -165,7 +171,7 @@ namespace TarjetaSUBE.Tests
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
+			bool resultado = _colectivo.pagarCon(_context, tarjeta, _fechaSimulada);
 
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(0));
@@ -237,7 +243,7 @@ namespace TarjetaSUBE.Tests
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
+			bool resultado = _colectivo.pagarCon(_context, tarjeta, _fechaSimulada);
 
 			Assert.That(resultado, Is.True);
 			// Saldo restante: -500 - 1075 = -1575
