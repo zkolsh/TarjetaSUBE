@@ -298,5 +298,48 @@ namespace TarjetaSUBE.Tests {
             var boletoEmitido = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
             Assert.That(boletoEmitido.Monto, Is.EqualTo(1075));
         }
+
+        [Test]
+        public void Colectivo_ConTarifaBasePersonalizada_CobraMontoCorrespondiente()
+        {
+            var colectivoInterurbano = new Colectivo { NroInterno = 202, Linea = "35/9" };
+            colectivoInterurbano.AsignarTarifaBase(3000m);
+            _context.Colectivos.Add(colectivoInterurbano);
+
+            var tarjeta = new Tarjeta { dniUsuario = 99887766, Saldo = 10000 };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            bool viaje = colectivoInterurbano.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(viaje, Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(10000 - 3000));
+            var boleto = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
+            Assert.That(boleto.Monto, Is.EqualTo(3000));
+        }
+
+        [Test]
+        public void Colectivo_ConTarifaBasePersonalizadaYMedioBoleto_AplicaDescuentoSobreTarifaEspecifica()
+        {
+            var colectivoInterurbano = new Colectivo { NroInterno = 203, Linea = "Expreso" };
+            colectivoInterurbano.AsignarTarifaBase(3000m);
+            _context.Colectivos.Add(colectivoInterurbano);
+
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 99887755,
+                Saldo = 10000,
+                TipoTarjeta = medioBoleto
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            bool viaje = colectivoInterurbano.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(viaje, Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(10000 - 1500));
+            var boleto = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
+            Assert.That(boleto.Monto, Is.EqualTo(1500));
+        }
     }
 }
