@@ -309,5 +309,33 @@ namespace TarjetaSUBE.Tests {
 			Assert.That(boleto.EsTrasbordo, Is.True);
 			Assert.That(boleto.Monto, Is.EqualTo(0m));
 		}
+
+		[Test]
+		public void Colectivo_PermiteInyeccionDeValidadorPagoPersonalizado() {
+			var validadorCustom = new ValidadorPago(new ServicioTrasbordo());
+			var colectivo = new Colectivo(validadorCustom) {
+				NroInterno = 999,
+				Linea = "999 Custom"
+			};
+			_context.Colectivos.Add(colectivo);
+			_context.SaveChanges();
+
+			var tarjeta = new Tarjeta {
+				dniUsuario = 99999999,
+				Saldo = 5000,
+				TipoTarjeta = _tipoNormal,
+				id_beneficio = _tipoNormal.id
+			};
+			_context.Tarjetas.Add(tarjeta);
+			_context.SaveChanges();
+
+			var reloj = new ProveedorFechaSimulado {
+				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
+			};
+
+			bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+			Assert.That(resultado, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(2850m));
+		}
 	}
 }
