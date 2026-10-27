@@ -12,9 +12,14 @@ namespace TarjetaSUBE {
             return viajesHoyConDescuento < LimiteViajesConDescuentoPorDia;
         }
 
-        public virtual decimal CalcularMonto(decimal tarifa)
+        public virtual bool PuedeViajar(SubeContext context, int tarjetaId, DateTime fechaActual)
         {
-            return tarifa * (1 - ((decimal)porcentaje_descuento / 100m));
+            return true;
+        }
+
+        public virtual decimal CalcularTarifa(SubeContext context, Tarjeta tarjeta, DateTime fechaActual, decimal tarifaBasica)
+        {
+            return CalcularMonto(tarifaBasica);
         }
     }
 }
