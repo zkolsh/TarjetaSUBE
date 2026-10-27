@@ -78,6 +78,10 @@ namespace TarjetaSUBE.Tests {
 			var lineaProp = colectivoEntityType.FindProperty(nameof(Colectivo.Linea));
 			Assert.That(lineaProp, Is.Not.Null);
 			Assert.That(lineaProp!.GetColumnName(), Is.EqualTo("Linea"));
+
+			var tarifaProp = colectivoEntityType.FindProperty(nameof(Colectivo.Tarifa));
+			Assert.That(tarifaProp, Is.Not.Null);
+			Assert.That(tarifaProp!.GetColumnName(), Is.EqualTo("Tarifa"));
 		}
 
 		[Test]

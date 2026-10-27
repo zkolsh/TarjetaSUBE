@@ -369,5 +369,112 @@ namespace TarjetaSUBE.Tests {
 
         }
 
+
+        [Test]
+        public void Colectivo_ConTarifaBasePersonalizada_CobraMontoCorrespondiente()
+        {
+            var colectivoInterurbano = new Colectivo { NroInterno = 202, Linea = "35/9" };
+            colectivoInterurbano.AsignarTarifaBase(3000m);
+            _context.Colectivos.Add(colectivoInterurbano);
+
+            var tarjeta = new Tarjeta { dniUsuario = 99887766, Saldo = 10000 };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            bool viaje = colectivoInterurbano.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(viaje, Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(10000 - 3000));
+            var boleto = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
+            Assert.That(boleto.Monto, Is.EqualTo(3000));
+        }
+
+        [Test]
+        public void Colectivo_ConTarifaBasePersonalizadaYMedioBoleto_AplicaDescuentoSobreTarifaEspecifica()
+        {
+            var colectivoInterurbano = new Colectivo { NroInterno = 203, Linea = "Expreso" };
+            colectivoInterurbano.AsignarTarifaBase(3000m);
+            _context.Colectivos.Add(colectivoInterurbano);
+
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 99887755,
+                Saldo = 10000,
+                TipoTarjeta = medioBoleto
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            bool viaje = colectivoInterurbano.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(viaje, Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(10000 - 1500));
+            var boleto = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
+            Assert.That(boleto.Monto, Is.EqualTo(1500));
+        }
+
+        [Test]
+        public void ColectivoInterurbano_TieneTarifaDe3000PorDefecto()
+        {
+            var interurbano = new ColectivoInterurbano { NroInterno = 301, Linea = "Gálvez" };
+            Assert.That(interurbano.Tarifa, Is.EqualTo(3000m));
+            Assert.That(interurbano.ObtenerTarifaBase(), Is.EqualTo(3000m));
+
+            _context.Colectivos.Add(interurbano);
+            var tarjeta = new Tarjeta { dniUsuario = 44556677, Saldo = 5000 };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            bool pago = interurbano.pagarCon(_context, tarjeta, reloj);
+            Assert.That(pago, Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(2000m)); // 5000 - 3000
+            var boleto = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
+            Assert.That(boleto.Monto, Is.EqualTo(3000m));
+        }
+
+        [Test]
+        public void ColectivoInterurbano_ConFranquiciaCompleta_CobraCero()
+        {
+            var interurbano = new ColectivoInterurbano { NroInterno = 302, Linea = "Baigorria" };
+            _context.Colectivos.Add(interurbano);
+
+            var franquicia = new FranquiciaCompleta { id = 5, nombre = "Franquicia Completa", porcentaje_descuento = 100 };
+            _context.TiposTarjetas.Add(franquicia);
+
+            var tarjeta = new Tarjeta { dniUsuario = 55667799, Saldo = 1000, TipoTarjeta = franquicia };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            bool pago = interurbano.pagarCon(_context, tarjeta, reloj);
+            Assert.That(pago, Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(1000m));
+            var boleto = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
+            Assert.That(boleto.Monto, Is.EqualTo(0m));
+        }
+
+        [Test]
+        public void ColectivoInterurbano_ConBoletoGratuitoEstudiantil_PrimerosDosViajesGratisYTerceroPagaCompleto()
+        {
+            var interurbano = new ColectivoInterurbano { NroInterno = 303, Linea = "Gálvez" };
+            _context.Colectivos.Add(interurbano);
+
+            var tarjeta = new Tarjeta { dniUsuario = 66778899, Saldo = 5000, TipoTarjeta = boletoGratuito };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            // 1er viaje: gratis
+            Assert.That(interurbano.pagarCon(_context, tarjeta, reloj), Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
+
+            // 2do viaje: gratis
+            reloj.AdelantarMinutos(60);
+            Assert.That(interurbano.pagarCon(_context, tarjeta, reloj), Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
+
+            // 3er viaje: paga tarifa interurbana completa ($3000)
+            reloj.AdelantarMinutos(60);
+            Assert.That(interurbano.pagarCon(_context, tarjeta, reloj), Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(2000)); // 5000 - 3000
+        }
     }
 }
