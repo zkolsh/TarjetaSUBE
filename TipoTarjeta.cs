@@ -4,17 +4,16 @@ namespace TarjetaSUBE {
 		public required string nombre {get; set;}
 		public required float porcentaje_descuento {get; set;}
 
-        public virtual bool TieneRestriccionDeIntervalo => false;
-        public virtual int LimiteViajesConDescuentoPorDia => int.MaxValue;
 
-        public virtual bool PermiteDescuento(int viajesHoyConDescuento)
-        {
-            return viajesHoyConDescuento < LimiteViajesConDescuentoPorDia;
-        }
 
         public virtual bool PuedeViajar(SubeContext context, int tarjetaId, DateTime fechaActual)
         {
             return true;
+        }
+
+        public virtual decimal CalcularMonto(decimal tarifaBasica, int viajesMes = 0)
+        {
+            return tarifaBasica * (1 - ((decimal)porcentaje_descuento / 100m));
         }
 
         public virtual decimal CalcularTarifa(SubeContext context, Tarjeta tarjeta, DateTime fechaActual, decimal tarifaBasica)

@@ -21,7 +21,8 @@ namespace TarjetaSUBE {
 
 			bool esTrasbordo = _servicioTrasbordo.EsTrasbordoValido(context, tarjeta, colectivo.Linea, fechaActual);
 
-			decimal monto = esTrasbordo ? 0m : (tarjeta.TipoTarjeta?.CalcularTarifa(context, tarjeta, fechaActual, Colectivo.tarifaBasica) ?? Colectivo.tarifaBasica);
+			decimal tarifaBase = colectivo.ObtenerTarifaBase();
+			decimal monto = esTrasbordo ? 0m : (tarjeta.TipoTarjeta?.CalcularTarifa(context, tarjeta, fechaActual, tarifaBase) ?? tarifaBase);
 			decimal saldoPrevio = tarjeta.Saldo;
 
 			if (tarjeta.Pagar(monto)) {

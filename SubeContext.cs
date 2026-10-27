@@ -42,7 +42,7 @@ namespace TarjetaSUBE {
 			modelBuilder.Entity<Colectivo>(entity => {
 				entity.ToTable("Colectivo");
 				entity.HasKey(e => e.NroInterno);
-				entity.Property(e => e.Tarifa).IsRequired();
+				entity.Property(e => e.Linea).IsRequired();
 			});
 
 			modelBuilder.Entity<Tarjeta>(entity => {

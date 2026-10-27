@@ -1,9 +1,11 @@
 namespace TarjetaSUBE {
 	public class ColectivoInterurbano : Colectivo {
-		public const decimal TarifaInterurbana = 3000m;
+		public static decimal TarifaInterurbana = 3000m;
 
-		public ColectivoInterurbano() {
-			Tarifa = TarifaInterurbana;
+		public ColectivoInterurbano() : base(TarifaInterurbana) {
+		}
+
+		public ColectivoInterurbano(IValidadorPago validadorPago) : base(validadorPago, TarifaInterurbana) {
 		}
 	}
 }

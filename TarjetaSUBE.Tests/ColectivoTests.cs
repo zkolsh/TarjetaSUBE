@@ -373,8 +373,7 @@ namespace TarjetaSUBE.Tests {
         [Test]
         public void Colectivo_ConTarifaBasePersonalizada_CobraMontoCorrespondiente()
         {
-            var colectivoInterurbano = new Colectivo { NroInterno = 202, Linea = "35/9" };
-            colectivoInterurbano.AsignarTarifaBase(3000m);
+            var colectivoInterurbano = new Colectivo(3000m) {NroInterno = 202, Linea = "35/9"};
             _context.Colectivos.Add(colectivoInterurbano);
 
             var tarjeta = new Tarjeta { dniUsuario = 99887766, Saldo = 10000 };
@@ -392,14 +391,25 @@ namespace TarjetaSUBE.Tests {
         [Test]
         public void Colectivo_ConTarifaBasePersonalizadaYMedioBoleto_AplicaDescuentoSobreTarifaEspecifica()
         {
-            var colectivoInterurbano = new Colectivo { NroInterno = 203, Linea = "Expreso" };
-            colectivoInterurbano.AsignarTarifaBase(3000m);
+            var colectivoInterurbano = new Colectivo(3000m) { NroInterno = 203, Linea = "Expreso" };
             _context.Colectivos.Add(colectivoInterurbano);
 
             var tarjeta = new Tarjeta
             {
                 dniUsuario = 99887755,
                 Saldo = 10000,
+                TipoTarjeta = medioBoleto
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            bool viaje = colectivoInterurbano.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(viaje, Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(10000 - 1500));
+            var boleto = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
+            Assert.That(boleto.Monto, Is.EqualTo(1500));
+        }
 
         [Test]
         public void Franquicias_FueraDeFranjaHoraria_TransaccionFallaCompleta()
@@ -465,19 +475,20 @@ namespace TarjetaSUBE.Tests {
             _context.Tarjetas.Add(tarjeta);
             _context.SaveChanges();
 
-            bool viaje = colectivoInterurbano.pagarCon(_context, tarjeta, reloj);
+            // Lunes 05:59:59
+            reloj.FechaActual = new DateTime(2026, 10, 19, 5, 59, 59);
 
-            Assert.That(viaje, Is.True);
-            Assert.That(tarjeta.Saldo, Is.EqualTo(10000 - 1500));
-            var boleto = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
-            Assert.That(boleto.Monto, Is.EqualTo(1500));
+            bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+
+            Assert.That(resultado, Is.False);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
+            Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0));
         }
 
         [Test]
         public void ColectivoInterurbano_TieneTarifaDe3000PorDefecto()
         {
             var interurbano = new ColectivoInterurbano { NroInterno = 301, Linea = "Gálvez" };
-            Assert.That(interurbano.Tarifa, Is.EqualTo(3000m));
             Assert.That(interurbano.ObtenerTarifaBase(), Is.EqualTo(3000m));
 
             _context.Colectivos.Add(interurbano);
@@ -535,14 +546,6 @@ namespace TarjetaSUBE.Tests {
             reloj.AdelantarMinutos(60);
             Assert.That(interurbano.pagarCon(_context, tarjeta, reloj), Is.True);
             Assert.That(tarjeta.Saldo, Is.EqualTo(2000)); // 5000 - 3000
-            // Lunes 05:59:59
-            reloj.FechaActual = new DateTime(2026, 10, 19, 5, 59, 59);
-
-            bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
-
-            Assert.That(resultado, Is.False);
-            Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
-            Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0));
         }
 
         [Test]
