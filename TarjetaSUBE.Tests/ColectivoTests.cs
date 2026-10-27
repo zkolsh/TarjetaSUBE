@@ -298,5 +298,76 @@ namespace TarjetaSUBE.Tests {
             var boletoEmitido = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
             Assert.That(boletoEmitido.Monto, Is.EqualTo(1075));
         }
+        [Test]
+        public void TarjetaNormal_EnColectivo_AplicaUsoFrecuenteYSeReseteaAlCambiarDeMes()
+        {
+            var tipoNormal = new TarjetaNormal { id = 1, nombre = "Normal", porcentaje_descuento = 0 };
+            _context.TiposTarjetas.Add(tipoNormal);
+            var tarjeta = new Tarjeta
+            {
+                dniUsuario = 11223344,
+                Saldo = 100000,
+                TipoTarjeta = tipoNormal,
+                id_beneficio = tipoNormal.id
+            };
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+            // Simulamos 29 viajes previos en el mes actual agregando boletos
+            for (int i = 0; i < 29; i++)
+            {
+                _context.Boletos.Add(new Boleto
+                {
+                    Fecha = reloj.Ahora,
+                    Linea = "102 Negra",
+                    Monto = 2150,
+                    TotalAbonado = 2150,
+                    Saldo = 50000,
+                    SaldoRestante = 50000,
+                    Tarjeta = tarjeta,
+                    TarjetaId = tarjeta.Id,
+                    TipoTarjeta = "TarjetaNormal",
+                    Colectivo = colectivo
+                });
+            }
+            _context.SaveChanges();
+            // Viaje numero 30 en el mismo mes: debe cobrar con 20% de descuento ($1720)
+            decimal saldoAntesViaje30 = tarjeta.Saldo;
+            bool viaje30 = colectivo.pagarCon(_context, tarjeta, reloj);
+            Assert.That(viaje30, Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(saldoAntesViaje30 - 1720m));
+
+            for (int i = 0; i < 49; i++)
+            {
+                _context.Boletos.Add(new Boleto
+                {
+                    Fecha = reloj.Ahora,
+                    Linea = "102 Negra",
+                    Monto = 1720,
+                    TotalAbonado = 1720,
+                    Saldo = 50000,
+                    SaldoRestante = 50000,
+                    Tarjeta = tarjeta,
+                    TarjetaId = tarjeta.Id,
+                    TipoTarjeta = "TarjetaNormal",
+                    Colectivo = colectivo
+                });
+            }
+            _context.SaveChanges();
+            // Viaje numero 80: debe cobrar con 25% de descuento ($1612.50)
+            decimal saldoAntesViaje80 = tarjeta.Saldo;
+            bool viaje80 = colectivo.pagarCon(_context, tarjeta, reloj);
+            Assert.That(viaje80, Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(saldoAntesViaje80 - 1612.5m)); // 2150 * 0.75 = 1612.5
+
+            // Adelantamos 35 dias (pasamos al mes siguiente): debe volver a cobrar tarifa completa ($2150)
+            reloj.AdelantarDias(35);
+            decimal saldoAntesNuevoMes = tarjeta.Saldo;
+            bool viajeNuevoMes = colectivo.pagarCon(_context, tarjeta, reloj);
+            Assert.That(viajeNuevoMes, Is.True);
+            Assert.That(tarjeta.Saldo, Is.EqualTo(saldoAntesNuevoMes - 2150m));
+
+
+        }
+
     }
 }
