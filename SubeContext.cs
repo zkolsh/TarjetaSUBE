@@ -11,7 +11,11 @@ namespace TarjetaSUBE {
 		public DbSet<Tarjeta> Tarjetas { get; set; }
 		public DbSet<TipoTarjeta> TiposTarjetas { get; set; }
 
-		protected override void OnConfiguring(DbContextOptionsBuilder options) {
+        public DbSet<Bicicletero> Bicicleteros { get; set; }
+        public DbSet<RetiroBicicleta> RetiroBicicleta { get; set; }
+
+
+        protected override void OnConfiguring(DbContextOptionsBuilder options) {
 			if (!options.IsConfigured) {
 				options.UseSqlite(@"Data Source=./TiendaSUBE.db");
 			}
@@ -69,6 +73,27 @@ namespace TarjetaSUBE {
 				e.Property(x => x.nombre).IsRequired();
 				e.Property(x => x.porcentaje_descuento).IsRequired();
 			});
-		}
+
+            modelBuilder.Entity<Bicicletero>(entity => {
+                entity.ToTable("Bicicletero");
+                entity.HasKey(e => e.id);
+                entity.Property(e => e.ubicacion).IsRequired();
+                entity.Property(e => e.cantidad_bicicletas).IsRequired();
+            });
+
+            modelBuilder.Entity<RetiroBicicleta>(entity => {
+                entity.ToTable("RetiroBicicleta");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.fecha_hora_retiro).IsRequired();
+
+                entity.HasOne(e => e.Bicicletero)
+                    .WithMany()
+                    .HasForeignKey(e => e.Id_Bicicletero);
+
+                entity.HasOne(e => e.Tarjeta)
+                    .WithMany()
+                    .HasForeignKey(e => e.id_tarjeta);
+            });
+        }
 	}
 }

@@ -153,6 +153,8 @@ Un usuario de la tarjeta SUBE puede realizar trasbordos entre colectivos sin cos
 
 - El usuario puede realizar trasbordos sin límite en un plazo de 1 hora desde que se pagó el primer boleto, pero el trasbordo debe ser entre líneas distintas.
 - Los trasbordos se pueden realizar de lunes a sábado de 7:00 a 22:00.
+- Todas las tarjetas pueden realizar trasbordos.
+- Cuando se paga un trasbordo se indica también en el boleto.
 
 ## Iteración 5
 
@@ -173,5 +175,4 @@ Testear las nuevas funcionalidades del sistema de Mi Bici Tu Bici. Como mínimo,
 - Se paga la tarifa y se retira una bici exitosamente. Verificando que la tarifa cobrada sea la correcta, sin demora en la devolución y con el saldo suficiente en la tarjeta.
 - No se puede retirar la bici. Validando que esto suceda cuando no hay suficiente saldo en la tarjeta teniendo o no una multa pendiente de pagar.
 - Se retira una bici con una o varias multas acumuladas.
-- Todas las tarjetas pueden realizar trasbordos.
-- Cuando se paga un trasbordo se indica también en el boleto.
+
