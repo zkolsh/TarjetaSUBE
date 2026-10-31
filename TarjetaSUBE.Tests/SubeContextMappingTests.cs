@@ -63,7 +63,10 @@ namespace TarjetaSUBE.Tests {
 			Assert.That(tables, Does.Contain("Colectivo"));
 			Assert.That(tables, Does.Contain("Tarjeta"));
 			Assert.That(tables, Does.Contain("Boleto"));
-		}
+
+            Assert.That(tables, Does.Contain("Bicicletero"));
+            Assert.That(tables, Does.Contain("RetiroBicicleta"));
+        }
 
 		[Test]
 		public void Colectivo_ModelMapping_MatchesSchema() {
@@ -650,6 +653,157 @@ namespace TarjetaSUBE.Tests {
 				Assert.That(actual!.ToString(), Is.EqualTo(item.Value?.ToString()), $"Unexpected discriminator for TipoTarjeta id={item.Key}.");
 			}
 		}
+        [Test]
+        public void Bicicletero_ModelMapping_MatchesSchema()
+        {
+            var entityType = _context.Model.FindEntityType(typeof(Bicicletero));
+            Assert.That(entityType, Is.Not.Null);
+            Assert.That(entityType!.GetTableName(), Is.EqualTo("Bicicletero"));
 
-	}
+            var pk = entityType.FindPrimaryKey();
+            Assert.That(pk, Is.Not.Null);
+            Assert.That(pk!.Properties.Select(p => p.Name), Contains.Item("id"));
+
+            var ubicacionProp = entityType.FindProperty(nameof(Bicicletero.ubicacion));
+            Assert.That(ubicacionProp, Is.Not.Null);
+            Assert.That(ubicacionProp!.GetColumnName(), Is.EqualTo("ubicacion"));
+
+            var cantidadProp = entityType.FindProperty(nameof(Bicicletero.cantidad_bicicletas));
+            Assert.That(cantidadProp, Is.Not.Null);
+            Assert.That(cantidadProp!.GetColumnName(), Is.EqualTo("cantidad_bicicletas"));
+        }
+
+        [Test]
+        public void RetiroBicicleta_ModelMapping_MatchesSchemaAndForeignKeys()
+        {
+            var entityType = _context.Model.FindEntityType(typeof(RetiroBicicleta));
+            Assert.That(entityType, Is.Not.Null);
+            Assert.That(entityType!.GetTableName(), Is.EqualTo("RetiroBicicleta"));
+
+            var pk = entityType.FindPrimaryKey();
+            Assert.That(pk, Is.Not.Null);
+            Assert.That(pk!.Properties.Select(p => p.Name), Contains.Item("Id"));
+
+            var retiroProp = entityType.FindProperty(nameof(RetiroBicicleta.fecha_hora_retiro));
+            Assert.That(retiroProp, Is.Not.Null);
+            Assert.That(retiroProp!.GetColumnName(), Is.EqualTo("fecha_hora_retiro"));
+            Assert.That(retiroProp.IsNullable, Is.False);
+
+            var devolucionProp = entityType.FindProperty(nameof(RetiroBicicleta.fecha_hora_devolucion));
+            Assert.That(devolucionProp, Is.Not.Null);
+            Assert.That(devolucionProp!.GetColumnName(), Is.EqualTo("fecha_hora_devolucion"));
+            Assert.That(devolucionProp.IsNullable, Is.True);
+
+            var bicicleteroEntityType = _context.Model.FindEntityType(typeof(Bicicletero))!;
+            var tarjetaEntityType = _context.Model.FindEntityType(typeof(Tarjeta))!;
+
+            var foreignKeys = entityType.GetForeignKeys().ToList();
+            Assert.That(foreignKeys, Has.Count.EqualTo(2));
+
+            var bicicleteroFk = foreignKeys.FirstOrDefault(fk => fk.PrincipalEntityType == bicicleteroEntityType);
+            Assert.That(bicicleteroFk, Is.Not.Null);
+            Assert.That(bicicleteroFk!.Properties.Select(p => p.GetColumnName()), Contains.Item("Id_Bicicletero"));
+
+            var tarjetaFk = foreignKeys.FirstOrDefault(fk => fk.PrincipalEntityType == tarjetaEntityType);
+            Assert.That(tarjetaFk, Is.Not.Null);
+            Assert.That(tarjetaFk!.Properties.Select(p => p.GetColumnName()), Contains.Item("id_tarjeta"));
+        }
+
+        [Test]
+        public void Bicicletero_Table_CRUD_Operations()
+        {
+            var bicicletero = new Bicicletero
+            {
+                ubicacion = "Plaza Pueyrredón",
+                cantidad_bicicletas = 10
+            };
+
+            _context.Bicicleteros.Add(bicicletero);
+            _context.SaveChanges();
+            _context.ChangeTracker.Clear();
+
+            Assert.That(bicicletero.id, Is.GreaterThan(0));
+            int savedId = bicicletero.id;
+
+            var read = _context.Bicicleteros.Find(savedId);
+            Assert.That(read, Is.Not.Null);
+            Assert.That(read!.ubicacion, Is.EqualTo("Plaza Pueyrredón"));
+            Assert.That(read.cantidad_bicicletas, Is.EqualTo(10));
+
+            read.ubicacion = "Plaza España";
+            read.cantidad_bicicletas = 7;
+            _context.SaveChanges();
+            _context.ChangeTracker.Clear();
+
+            var updated = _context.Bicicleteros.Find(savedId);
+            Assert.That(updated, Is.Not.Null);
+            Assert.That(updated!.ubicacion, Is.EqualTo("Plaza España"));
+            Assert.That(updated.cantidad_bicicletas, Is.EqualTo(7));
+
+            _context.Bicicleteros.Remove(updated);
+            _context.SaveChanges();
+            _context.ChangeTracker.Clear();
+
+            Assert.That(_context.Bicicleteros.Find(savedId), Is.Null);
+        }
+
+        [Test]
+        public void RetiroBicicleta_CrossTable_CRUD_Operations()
+        {
+            var bicicletero = new Bicicletero { ubicacion = "Costanera", cantidad_bicicletas = 5 };
+            var tarjeta = new Tarjeta { dniUsuario = 35123123, Saldo = 10000 };
+
+            _context.Bicicleteros.Add(bicicletero);
+            _context.Tarjetas.Add(tarjeta);
+            _context.SaveChanges();
+
+            DateTime fechaRetiro = new(2026, 10, 19, 8, 0, 0);
+            var retiro = new RetiroBicicleta
+            {
+                Bicicletero = bicicletero,
+                Id_Bicicletero = bicicletero.id,
+                Tarjeta = tarjeta,
+                id_tarjeta = tarjeta.Id,
+                fecha_hora_retiro = fechaRetiro
+            };
+
+            _context.RetiroBicicleta.Add(retiro);
+            _context.SaveChanges();
+            _context.ChangeTracker.Clear();
+
+            Assert.That(retiro.Id, Is.GreaterThan(0));
+            int savedRetiroId = retiro.Id;
+            int savedBicicleteroId = bicicletero.id;
+            int savedTarjetaId = tarjeta.Id;
+
+            var read = _context.RetiroBicicleta
+                .Include(r => r.Bicicletero)
+                .Include(r => r.Tarjeta)
+                .FirstOrDefault(r => r.Id == savedRetiroId);
+
+            Assert.That(read, Is.Not.Null);
+            Assert.That(read!.fecha_hora_retiro, Is.EqualTo(fechaRetiro));
+            Assert.That(read.fecha_hora_devolucion, Is.Null);
+            Assert.That(read.Bicicletero.id, Is.EqualTo(savedBicicleteroId));
+            Assert.That(read.Tarjeta.Id, Is.EqualTo(savedTarjetaId));
+
+            DateTime fechaDevolucion = fechaRetiro.AddMinutes(45);
+            read.fecha_hora_devolucion = fechaDevolucion;
+            _context.SaveChanges();
+            _context.ChangeTracker.Clear();
+
+            var updated = _context.RetiroBicicleta.Find(savedRetiroId);
+            Assert.That(updated, Is.Not.Null);
+            Assert.That(updated!.fecha_hora_devolucion, Is.EqualTo(fechaDevolucion));
+
+            _context.RetiroBicicleta.Remove(updated);
+            _context.SaveChanges();
+            _context.ChangeTracker.Clear();
+
+            Assert.That(_context.RetiroBicicleta.Find(savedRetiroId), Is.Null);
+            Assert.That(_context.Bicicleteros.Find(savedBicicleteroId), Is.Not.Null);
+            Assert.That(_context.Tarjetas.Find(savedTarjetaId), Is.Not.Null);
+        }
+
+    }
 }
