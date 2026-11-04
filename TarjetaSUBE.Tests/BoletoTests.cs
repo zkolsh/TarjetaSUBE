@@ -12,26 +12,13 @@ namespace TarjetaSUBE.Tests
 		private ProveedorFechaSimulado _fechaSimulada = null!;
 
 		private Colectivo CrearColectivo(decimal? tarifa = null) {
-			var servicioTrasbordo = new ServicioTrasbordo();
-			var selectorTarjeta = new SelectorTarjeta(new TarjetaNormal());
-
-			var validadorPago = new ValidadorPago(servicioTrasbordo, selectorTarjeta);
-
-			return tarifa.HasValue? new Colectivo(validadorPago, tarifa.Value) {
+			return tarifa.HasValue? new Colectivo(tarifa.Value) {
 					NroInterno = 101,
 					Linea = "102 Negra"
-				} : new Colectivo(validadorPago) {
+				} : new Colectivo {
 					NroInterno = 101,
 					Linea = "102 Negra"
 				};
-		}
-
-		private Colectivo CrearColectivoInterurbano() {
-			var validadorPago = new ValidadorPago(new ServicioTrasbordo(), new SelectorTarjeta(new TarjetaNormal()));
-			return new ColectivoInterurbano(validadorPago) {
-				NroInterno = 201,
-				Linea = "Interurbana"
-			};
 		}
 
 		[SetUp]

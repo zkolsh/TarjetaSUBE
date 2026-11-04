@@ -1,25 +1,17 @@
-#pragma warning disable NUnit2045 // BORREN C# YA!!!!!
-
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 using TarjetaSUBE;
 
 namespace TarjetaSUBE.Tests { 
-
 	public class ColectivoTests
 	{
 		private SubeContext _context = null!;
-		private Colectivo _colectivo = null!;
+		private Colectivo colectivo = null!;
 		private ProveedorFechaSimulado reloj = null!;
 		private MedioBoletoEstudiantil medioBoleto = null!;
 		private decimal tarifaNormal; 
 
 		private BoletoGratuitoEstudiantil boletoGratuito = null!;
-
-		private ServicioTrasbordo _servicioTrasbordo = new ServicioTrasbordo();
-		private SelectorTarjeta _selectorTarjeta = new SelectorTarjeta(new TarjetaNormal());
-		private ValidadorPago _validadorPago;
-
 		[SetUp]
 		public void Setup()
 		{
@@ -27,20 +19,17 @@ namespace TarjetaSUBE.Tests {
 				.UseInMemoryDatabase(Guid.NewGuid().ToString())
 				.Options;
 
-			_validadorPago = new ValidadorPago(_servicioTrasbordo, _selectorTarjeta);
 			_context = new SubeContext(options);
-			_colectivo = new(_validadorPago) {
-				NroInterno = 101,
-				Linea = "102 Negra",
-			};
+			colectivo = new Colectivo { NroInterno = 101, Linea = "102 Negra" };
+			_context.Colectivos.Add(colectivo);
 
-			_context.Colectivos.Add(_colectivo);
-
-			reloj = new ProveedorFechaSimulado {
+			reloj = new ProveedorFechaSimulado
+			{
 				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
 			};
 
-			medioBoleto = new MedioBoletoEstudiantil {
+			medioBoleto = new MedioBoletoEstudiantil
+			{
 				id = 2,
 				nombre = "Medio Boleto Estudiantil",
 				porcentaje_descuento = 50
@@ -74,7 +63,7 @@ namespace TarjetaSUBE.Tests {
 			_context.Tarjetas.Add(tarjeta);
 
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
+			bool resultado = colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
 			// 5000 - 2150 = 2850
@@ -96,7 +85,7 @@ namespace TarjetaSUBE.Tests {
 
 			_context.Tarjetas.Add(tarjeta);
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
+			bool resultado = colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.False);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-1000));
@@ -113,7 +102,7 @@ namespace TarjetaSUBE.Tests {
 
 			_context.Tarjetas.Add(tarjeta);
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
+			bool resultado = colectivo.pagarCon(_context, tarjeta, new ProveedorFechaSimulado());
 
 			Assert.That(resultado, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-1950)); // 200 - 2150
@@ -135,25 +124,25 @@ namespace TarjetaSUBE.Tests {
 			_context.SaveChanges();
 
 			// 1er viaje: 08:00 -> paga $1075
-			bool viaje1 = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool viaje1 = colectivo.pagarCon(_context, tarjeta, reloj);
 			Assert.That(viaje1, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(10000 - 1075)); // 8925
 
 			// 2do viaje: 09:00 (mismo día) -> paga $1075
 			reloj.AdelantarMinutos(60);
-			bool viaje2 = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool viaje2 = colectivo.pagarCon(_context, tarjeta, reloj);
 			Assert.That(viaje2, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(8925 - 1075)); //7850
 
 			// 3er viaje: 12:00 (mismo día) -> paga tarifa normal $2150
 			reloj.AdelantarMinutos(180);
-			bool viaje3 = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool viaje3 = colectivo.pagarCon(_context, tarjeta, reloj);
 			Assert.That(viaje3, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(7850 - 2150)); //5700
 
 			// 4to viaje: al día siguiente (08:00) -> se resetea y vuelve a pagar $1075
 			reloj.AdelantarDias(1);
-			bool viaje4 = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool viaje4 = colectivo.pagarCon(_context, tarjeta, reloj);
 			Assert.That(viaje4, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(5700 - 1075)); //4625
 		}
@@ -174,22 +163,25 @@ namespace TarjetaSUBE.Tests {
 
 
 			// 1er viaje: 08:00 -> Pasa
-			bool viaje1 = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool viaje1 = colectivo.pagarCon(_context, tarjeta, reloj);
 			Assert.That(viaje1, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 1075)); // 3925
+			Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 1075));
 
-			// 2do viaje: 08:03 (pasaron solo 3 min) -> Rebota
+			// 2do viaje: 08:03 (pasaron solo 3 min) -> Degenera a TarjetaNormal
 			reloj.AdelantarMinutos(3);
-			bool viaje2 = _colectivo.pagarCon(_context, tarjeta, reloj);
-			Assert.That(viaje2, Is.False);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(3925)); // El saldo no se descuenta
+			bool viaje2 = colectivo.pagarCon(_context, tarjeta, reloj);
+			Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(2), "Debe haberse emitido un sólo boleto");
+			// Verificar que hay un boleto con TarjetaNormal
+			// .Single() lanza excepcion si no encuentra nada -> No la atrapamos, entonces NUnit marca el test como fallido.
+			_context.Boletos.Where(b => b.Tarjeta.Id == tarjeta.Id && b.TipoTarjeta == "TarjetaNormal").Single();
+			Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 1075 - 2150)); // El saldo SI se descuenta, pero boleto normal
 
 
 			// 3er intento: 08:06 (pasaron 6 min desde el 1ero) -> Pasa
 			reloj.AdelantarMinutos(3);
-			bool viaje3 = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool viaje3 = colectivo.pagarCon(_context, tarjeta, reloj);
 			Assert.That(viaje3, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(3925 - 1075)); //2850
+			Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 1075 - 2150 - 1075));
 		}
 
 		[Test]
@@ -205,24 +197,23 @@ namespace TarjetaSUBE.Tests {
 			_context.SaveChanges();
 
 			// 1er viaje: 08:00 -> Gratis ($0)
-			_colectivo.pagarCon(_context, tarjeta, reloj);
+			colectivo.pagarCon(_context, tarjeta, reloj);
 
 			// 2do viaje: 09:00 -> Gratis ($0)
 			reloj.AdelantarMinutos(60);
-			_colectivo.pagarCon(_context, tarjeta, reloj);
+			colectivo.pagarCon(_context, tarjeta, reloj);
 
 			// 3er viaje: 12:00 -> Ya no es gratis
 			reloj.AdelantarMinutos(180);
-			_colectivo.pagarCon(_context, tarjeta, reloj);
+			colectivo.pagarCon(_context, tarjeta, reloj);
 
 			// 4to viaje: 13:00 -> Ya no es gratis
 			reloj.AdelantarMinutos(60);
-			_colectivo.pagarCon(_context, tarjeta, reloj);
+			colectivo.pagarCon(_context, tarjeta, reloj);
+
 			// Verificamos en la base de datos que la cantidad de boletos con Monto == 0 en el día es exactamente 2
 			int boletosGratisDelDia = _context.Boletos
-				.Count(b => b.Tarjeta.Id == tarjeta.Id
-						&& b.Fecha.Date == reloj.Ahora.Date
-						&& b.Monto == 0);
+				.Count(b => b.Tarjeta.Id == tarjeta.Id && b.Fecha.Date == reloj.Ahora.Date && b.Monto == 0);
 			Assert.That(boletosGratisDelDia, Is.EqualTo(2), "No debe haber más de dos viajes gratuitos en el mismo día.");
 		}
 
@@ -241,17 +232,17 @@ namespace TarjetaSUBE.Tests {
 			_context.SaveChanges();
 
 			// 1er viaje (08:00): gratis ($0) -> Saldo sigue en 5000
-			Assert.That(_colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
+			Assert.That(colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
 
 			// 2do viaje (09:00): gratis ($0) -> Saldo sigue en 5000
 			reloj.AdelantarMinutos(60);
-			Assert.That(_colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
+			Assert.That(colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
 
 			// 3er viaje (10:00, posterior al 2do): cobra precio completo ($2150)
 			reloj.AdelantarMinutos(60);
-			Assert.That(_colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
+			Assert.That(colectivo.pagarCon(_context, tarjeta, reloj), Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 2150)); //2850
 
 			// Verificamos que el boleto emitido para este 3er viaje registró el monto completo ($2150)
@@ -278,7 +269,7 @@ namespace TarjetaSUBE.Tests {
 			_context.Tarjetas.Add(tarjeta);
 			_context.SaveChanges();
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
 			Assert.That(resultado, Is.True, "Franquicia completa siempre debe poder pagar en el colectivo.");
 			Assert.That(tarjeta.Saldo, Is.EqualTo(-2000), "No debe descontar saldo.");
 			var boletoEmitido = _context.Boletos.First(b => b.Tarjeta.Id == tarjeta.Id);
@@ -298,7 +289,7 @@ namespace TarjetaSUBE.Tests {
 			_context.SaveChanges();
 
 			// Paga el primer viaje
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
 			// 1. Debe permitir el viaje
 			Assert.That(resultado, Is.True);
 
@@ -336,13 +327,13 @@ namespace TarjetaSUBE.Tests {
 						Tarjeta = tarjeta,
 						TarjetaId = tarjeta.Id,
 						TipoTarjeta = "TarjetaNormal",
-						Colectivo = _colectivo
+						Colectivo = colectivo
 						});
 			}
 			_context.SaveChanges();
 			// Viaje numero 30 en el mismo mes: debe cobrar con 20% de descuento ($1720)
 			decimal saldoAntesViaje30 = tarjeta.Saldo;
-			bool viaje30 = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool viaje30 = colectivo.pagarCon(_context, tarjeta, reloj);
 			Assert.That(viaje30, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(saldoAntesViaje30 - 1720m));
 
@@ -359,20 +350,20 @@ namespace TarjetaSUBE.Tests {
 						Tarjeta = tarjeta,
 						TarjetaId = tarjeta.Id,
 						TipoTarjeta = "TarjetaNormal",
-						Colectivo = _colectivo
+						Colectivo = colectivo
 						});
 			}
 			_context.SaveChanges();
 			// Viaje numero 80: debe cobrar con 25% de descuento ($1612.50)
 			decimal saldoAntesViaje80 = tarjeta.Saldo;
-			bool viaje80 = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool viaje80 = colectivo.pagarCon(_context, tarjeta, reloj);
 			Assert.That(viaje80, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(saldoAntesViaje80 - 1612.5m)); // 2150 * 0.75 = 1612.5
 
 			// Adelantamos 35 dias (pasamos al mes siguiente): debe volver a cobrar tarifa completa ($2150)
 			reloj.AdelantarDias(35);
 			decimal saldoAntesNuevoMes = tarjeta.Saldo;
-			bool viajeNuevoMes = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool viajeNuevoMes = colectivo.pagarCon(_context, tarjeta, reloj);
 			Assert.That(viajeNuevoMes, Is.True);
 			Assert.That(tarjeta.Saldo, Is.EqualTo(saldoAntesNuevoMes - 2150m));
 
@@ -383,7 +374,7 @@ namespace TarjetaSUBE.Tests {
 		[Test]
 		public void Colectivo_ConTarifaBasePersonalizada_CobraMontoCorrespondiente()
 		{
-			var colectivoInterurbano = new ColectivoInterurbano(_validadorPago) {NroInterno = 202, Linea = "35/9"};
+			var colectivoInterurbano = new Colectivo(3000m) {NroInterno = 202, Linea = "35/9"};
 			_context.Colectivos.Add(colectivoInterurbano);
 
 			var tarjeta = new Tarjeta { dniUsuario = 99887766, Saldo = 10000 };
@@ -401,7 +392,7 @@ namespace TarjetaSUBE.Tests {
 		[Test]
 		public void Colectivo_ConTarifaBasePersonalizadaYMedioBoleto_AplicaDescuentoSobreTarifaEspecifica()
 		{
-			var colectivoInterurbano = new ColectivoInterurbano(_validadorPago) {NroInterno = 202, Linea = "35/9"};
+			var colectivoInterurbano = new Colectivo(3000m) { NroInterno = 203, Linea = "Expreso" };
 			_context.Colectivos.Add(colectivoInterurbano);
 
 			var tarjeta = new Tarjeta
@@ -422,7 +413,7 @@ namespace TarjetaSUBE.Tests {
 		}
 
 		[Test]
-		public void Franquicias_FueraDeFranjaHoraria_TransaccionFallaCompleta()
+		public void Franquicias_FueraDeFranjaHoraria_NoAplicaBeneficio()
 		{
 			var franquicia = new FranquiciaCompleta
 			{
@@ -444,15 +435,18 @@ namespace TarjetaSUBE.Tests {
 			// Sábado a las 10:00 (fuera de la franja)
 			reloj.FechaActual = new DateTime(2026, 10, 24, 10, 0, 0);
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
 
-			Assert.That(resultado, Is.False, "No debe permitir pagar con franquicia en día sábado.");
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5000), "El saldo no debe verse afectado.");
-			Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0), "No debe emitirse ningún boleto.");
+			Assert.That(resultado, Is.True); // Con tarjeta normal, se debería poder pagar
+			Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 2150), "El saldo no debe verse afectado.");
+			Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(1), "Debe haberse emitido un sólo boleto");
+			var boleto = _context.Boletos.Where(b => b.Tarjeta.Id == tarjeta.Id).Single();
+			Assert.That(boleto.TipoTarjeta, Is.Not.Null);
+			Assert.That(boleto.TipoTarjeta, Is.EqualTo("TarjetaNormal"));
 		}
 
 		[Test]
-		public void MedioBoleto_FueraDeFranjaHoraria_NoPuedePagarEnSabado()
+		public void MedioBoleto_FueraDeFranjaHoraria_NoAplicaEnSabado()
 		{
 			var tarjeta = new Tarjeta
 			{
@@ -466,15 +460,17 @@ namespace TarjetaSUBE.Tests {
 			// Sábado 10:00
 			reloj.FechaActual = new DateTime(2026, 10, 24, 10, 0, 0);
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+			Assert.That(resultado, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(5000m - 2150m));
 
-			Assert.That(resultado, Is.False);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
-			Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0));
+			var boleto = _context.Boletos.Where(b => b.Tarjeta.Id == tarjeta.Id).Single();
+			Assert.That(boleto.TipoTarjeta, Is.Not.Null);
+			Assert.That(boleto.TipoTarjeta, Is.EqualTo("TarjetaNormal"));
 		}
 
 		[Test]
-		public void MedioBoleto_AntesDeLasSeis_NoPuedePagar()
+		public void MedioBoleto_AntesDeLasSeis_NoAplicaBeneficio()
 		{
 			var tarjeta = new Tarjeta
 			{
@@ -488,17 +484,19 @@ namespace TarjetaSUBE.Tests {
 			// Lunes 05:59:59
 			reloj.FechaActual = new DateTime(2026, 10, 19, 5, 59, 59);
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, reloj);
-
-			Assert.That(resultado, Is.False);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
-			Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0));
+			bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+			Assert.That(resultado, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 2150));
+			Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(1), "Debe haberse emitido un sólo boleto");
+			var boleto = _context.Boletos.Where(b => b.Tarjeta.Id == tarjeta.Id).Single();
+			Assert.That(boleto.TipoTarjeta, Is.Not.Null);
+			Assert.That(boleto.TipoTarjeta, Is.EqualTo("TarjetaNormal"));
 		}
 
 		[Test]
 		public void ColectivoInterurbano_TieneTarifaDe3000PorDefecto()
 		{
-			var interurbano = new ColectivoInterurbano(_validadorPago) { NroInterno = 301, Linea = "Gálvez" };
+			var interurbano = new ColectivoInterurbano { NroInterno = 301, Linea = "Gálvez" };
 			Assert.That(interurbano.ObtenerTarifaBase(), Is.EqualTo(3000m));
 
 			_context.Colectivos.Add(interurbano);
@@ -516,7 +514,7 @@ namespace TarjetaSUBE.Tests {
 		[Test]
 		public void ColectivoInterurbano_ConFranquiciaCompleta_CobraCero()
 		{
-			var interurbano = new ColectivoInterurbano(_validadorPago) { NroInterno = 302, Linea = "Baigorria" };
+			var interurbano = new ColectivoInterurbano { NroInterno = 302, Linea = "Baigorria" };
 			_context.Colectivos.Add(interurbano);
 
 			var franquicia = new FranquiciaCompleta { id = 5, nombre = "Franquicia Completa", porcentaje_descuento = 100 };
@@ -536,7 +534,7 @@ namespace TarjetaSUBE.Tests {
 		[Test]
 		public void ColectivoInterurbano_ConBoletoGratuitoEstudiantil_PrimerosDosViajesGratisYTerceroPagaCompleto()
 		{
-			var interurbano = new ColectivoInterurbano(_validadorPago) { NroInterno = 303, Linea = "Gálvez" };
+			var interurbano = new ColectivoInterurbano { NroInterno = 303, Linea = "Gálvez" };
 			_context.Colectivos.Add(interurbano);
 
 			var tarjeta = new Tarjeta { dniUsuario = 66778899, Saldo = 5000, TipoTarjeta = boletoGratuito };
@@ -559,7 +557,7 @@ namespace TarjetaSUBE.Tests {
 		}
 
 		[Test]
-		public void MedioBoleto_DespuesDeLasVeintidos_NoPuedePagar()
+		public void MedioBoleto_DespuesDeLasVeintidos_NoAplicaBeneficio()
 		{
 			var tarjeta = new Tarjeta
 			{
@@ -573,15 +571,17 @@ namespace TarjetaSUBE.Tests {
 			// Martes 22:00:01
 			reloj.FechaActual = new DateTime(2026, 10, 20, 22, 0, 1);
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, reloj);
-
-			Assert.That(resultado, Is.False);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
-			Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0));
+			bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+			Assert.That(resultado, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 2150));
+			Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(1), "Debe haberse emitido un sólo boleto");
+			var boleto = _context.Boletos.Where(b => b.Tarjeta.Id == tarjeta.Id).Single();
+			Assert.That(boleto.TipoTarjeta, Is.Not.Null);
+			Assert.That(boleto.TipoTarjeta, Is.EqualTo("TarjetaNormal"));
 		}
 
 		[Test]
-		public void BoletoGratuito_FueraDeFranjaHoraria_NoPuedePagar()
+		public void BoletoGratuito_FueraDeFranjaHoraria_NoAplicaBeneficio()
 		{
 			var tarjeta = new Tarjeta
 			{
@@ -595,11 +595,13 @@ namespace TarjetaSUBE.Tests {
 			// Domingo 14:00
 			reloj.FechaActual = new DateTime(2026, 10, 25, 14, 0, 0);
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, reloj);
-
-			Assert.That(resultado, Is.False);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5000));
-			Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(0));
+			bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
+			Assert.That(resultado, Is.True);
+			Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 2150));
+			Assert.That(_context.Boletos.Count(b => b.Tarjeta.Id == tarjeta.Id), Is.EqualTo(1), "Debe haberse emitido un sólo boleto");
+			var boleto = _context.Boletos.Where(b => b.Tarjeta.Id == tarjeta.Id).Single();
+			Assert.That(boleto.TipoTarjeta, Is.Not.Null);
+			Assert.That(boleto.TipoTarjeta, Is.EqualTo("TarjetaNormal"));
 		}
 
 		[Test]
@@ -625,7 +627,7 @@ namespace TarjetaSUBE.Tests {
 			// Domingo a las 23:00 (fuera de la franja de franquicias)
 			reloj.FechaActual = new DateTime(2026, 10, 25, 23, 0, 0);
 
-			bool resultado = _colectivo.pagarCon(_context, tarjeta, reloj);
+			bool resultado = colectivo.pagarCon(_context, tarjeta, reloj);
 
 			Assert.That(resultado, Is.True, "TarjetaNormal funciona 24/7.");
 			Assert.That(tarjeta.Saldo, Is.EqualTo(5000 - 2150));

@@ -1,9 +1,15 @@
 namespace TarjetaSUBE {
-	public class ValidadorPago(IServicioTrasbordo servicioTrasbordo, ISelectorTarjeta selectorTarjeta) : IValidadorPago {
-		private readonly IServicioTrasbordo m_servicioTrasbordo = servicioTrasbordo ?? throw new ArgumentNullException(nameof(servicioTrasbordo));
-		private readonly ISelectorTarjeta m_selectorTarjeta = selectorTarjeta ?? throw new ArgumentNullException(nameof(selectorTarjeta));
+	public class ValidadorPago {
+		private readonly IServicioTrasbordo m_servicioTrasbordo;
+		private readonly ISelectorTarjeta m_selectorTarjeta;
 
 		// DESINVENTEN C# YA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		public static ValidadorPago Instancia { get; } = new(new ServicioTrasbordo(), new SelectorTarjeta(new TarjetaNormal()));
+
+		private ValidadorPago(IServicioTrasbordo servicioTrasbordo, ISelectorTarjeta selectorTarjeta) {
+			m_servicioTrasbordo = servicioTrasbordo;
+			m_selectorTarjeta = selectorTarjeta;
+		}
 
 		public bool PagarCon(Colectivo colectivo, SubeContext context, Tarjeta tarjeta, IProveedorFecha proveedor) {
 			tarjeta.TipoTarjeta ??= context.TiposTarjetas.Find(tarjeta.id_beneficio);
@@ -15,7 +21,7 @@ namespace TarjetaSUBE {
 			bool esTrasbordo = m_servicioTrasbordo.EsTrasbordoValido(context, tarjeta, colectivo.Linea, fechaActual);
 
 			decimal tarifaBase = colectivo.ObtenerTarifaBase();
-			decimal monto = esTrasbordo ? 0m : (tarjeta.TipoTarjeta?.CalcularTarifa(context, tarjeta, fechaActual, tarifaBase) ?? tarifaBase);
+			decimal monto = esTrasbordo ? 0m : tipoEfectivo.CalcularTarifa(context, tarjeta, fechaActual, tarifaBase);
 			decimal saldoPrevio = tarjeta.Saldo;
 
 			if (tarjeta.Pagar(monto)) {
@@ -25,7 +31,7 @@ namespace TarjetaSUBE {
 				}
 
 				Boleto boleto = new() {
-					TipoTarjeta = tipoEfectivo.nombre,
+					TipoTarjeta = tipoEfectivo.nombre ?? "TarjetaNormal",
 					Fecha = fechaActual,
 					Colectivo = colectivo,
 					Linea = colectivo.Linea,

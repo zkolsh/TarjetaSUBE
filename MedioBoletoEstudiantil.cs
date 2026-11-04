@@ -8,7 +8,7 @@ namespace TarjetaSUBE {
 			}
 
 			var ultimoBoleto = context.Boletos
-				.Where(b => b.Tarjeta.Id == tarjetaId)
+				.Where(b => b.Tarjeta.Id == tarjetaId && b.TipoTarjeta != "TarjetaNormal")
 				.OrderByDescending(b => b.Fecha)
 				.FirstOrDefault();
 			if (ultimoBoleto != null && (fechaActual - ultimoBoleto.Fecha).TotalMinutes < 5) {

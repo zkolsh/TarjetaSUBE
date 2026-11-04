@@ -3,7 +3,7 @@ namespace TarjetaSUBE {
 		private readonly TipoTarjeta m_tarjetaNormal = tarjetaNormal;
 
 		public TipoTarjeta ResolverTarjeta(SubeContext context, Tarjeta tarjeta, DateTime fechaActual) {
-			var tt = tarjeta.TipoTarjeta!;
+			var tt = tarjeta.TipoTarjeta ?? m_tarjetaNormal;
 			if (tt.PuedeViajar(context, tarjeta.Id, fechaActual)) {
 				return tt;
 			} else {
