@@ -1,3 +1,5 @@
+#pragma warning disable NUnit2045 // BORREN C# YA!!!!!
+
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;

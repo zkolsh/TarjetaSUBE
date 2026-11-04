@@ -3,30 +3,22 @@ namespace TarjetaSUBE {
 		public int NroInterno { get; set; }
 		public required string Linea { get; set; }
 
-		private static readonly decimal tarifaBasica = 2150m;
-
-		private readonly decimal Tarifa;
-
-		public virtual decimal ObtenerTarifaBase() => Tarifa;
-
-		private readonly IValidadorPago _validadorPago;
-
-		public Colectivo() : this(new ValidadorPago(), tarifaBasica) {
+		public Colectivo() {
+			_tarifa = TarifaBasica;
 		}
 
-		public Colectivo(decimal tarifa) : this(new ValidadorPago(), tarifa) {
+		public Colectivo(decimal tarifa) {
+			_tarifa = tarifa;
 		}
 
-		public Colectivo(IValidadorPago validadorPago) : this(validadorPago, tarifaBasica) {
-		}
+		private const decimal TarifaBasica = 2150m;
 
-		public Colectivo(IValidadorPago validadorPago, decimal tarifa) {
-			_validadorPago = validadorPago ?? throw new ArgumentNullException(nameof(validadorPago));
-			Tarifa = tarifa;
-		}
+		protected readonly decimal _tarifa;
+
+		public virtual decimal ObtenerTarifaBase() => _tarifa;
 
 		public bool pagarCon(SubeContext context, Tarjeta tarjeta, IProveedorFecha proveedor) {
-			return _validadorPago.PagarCon(this, context, tarjeta, proveedor);
+			return ValidadorPago.Instancia.PagarCon(this, context, tarjeta, proveedor);
 		}
 	}
 }

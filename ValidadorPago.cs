@@ -1,28 +1,27 @@
 namespace TarjetaSUBE {
-	public class ValidadorPago : IValidadorPago {
-		private readonly IServicioTrasbordo _servicioTrasbordo;
+	public class ValidadorPago {
+		private readonly IServicioTrasbordo m_servicioTrasbordo;
+		private readonly ISelectorTarjeta m_selectorTarjeta;
 
-		public ValidadorPago() : this(new ServicioTrasbordo()) {
-		}
+		// DESINVENTEN C# YA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		public static ValidadorPago Instancia { get; } = new(new ServicioTrasbordo(), new SelectorTarjeta(new TarjetaNormal()));
 
-		public ValidadorPago(IServicioTrasbordo servicioTrasbordo) {
-			_servicioTrasbordo = servicioTrasbordo ?? throw new ArgumentNullException(nameof(servicioTrasbordo));
+		private ValidadorPago(IServicioTrasbordo servicioTrasbordo, ISelectorTarjeta selectorTarjeta) {
+			m_servicioTrasbordo = servicioTrasbordo;
+			m_selectorTarjeta = selectorTarjeta;
 		}
 
 		public bool PagarCon(Colectivo colectivo, SubeContext context, Tarjeta tarjeta, IProveedorFecha proveedor) {
 			tarjeta.TipoTarjeta ??= context.TiposTarjetas.Find(tarjeta.id_beneficio);
-
 			proveedor ??= new ProveedorDeFechaSistema();
+
 			DateTime fechaActual = proveedor.Ahora;
+			var tipoEfectivo = m_selectorTarjeta.ResolverTarjeta(context, tarjeta, fechaActual);
 
-			if (tarjeta.TipoTarjeta != null && !tarjeta.TipoTarjeta.PuedeViajar(context, tarjeta.Id, fechaActual)) {
-				return false;
-			}
-
-			bool esTrasbordo = _servicioTrasbordo.EsTrasbordoValido(context, tarjeta, colectivo.Linea, fechaActual);
+			bool esTrasbordo = m_servicioTrasbordo.EsTrasbordoValido(context, tarjeta, colectivo.Linea, fechaActual);
 
 			decimal tarifaBase = colectivo.ObtenerTarifaBase();
-			decimal monto = esTrasbordo ? 0m : (tarjeta.TipoTarjeta?.CalcularTarifa(context, tarjeta, fechaActual, tarifaBase) ?? tarifaBase);
+			decimal monto = esTrasbordo ? 0m : tipoEfectivo.CalcularTarifa(context, tarjeta, fechaActual, tarifaBase);
 			decimal saldoPrevio = tarjeta.Saldo;
 
 			if (tarjeta.Pagar(monto)) {
@@ -32,7 +31,7 @@ namespace TarjetaSUBE {
 				}
 
 				Boleto boleto = new() {
-					TipoTarjeta = tarjeta.TipoTarjeta?.nombre ?? "TarjetaNormal",
+					TipoTarjeta = tipoEfectivo.nombre ?? "TarjetaNormal",
 					Fecha = fechaActual,
 					Colectivo = colectivo,
 					Linea = colectivo.Linea,

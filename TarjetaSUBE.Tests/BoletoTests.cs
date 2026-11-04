@@ -11,6 +11,16 @@ namespace TarjetaSUBE.Tests
 		private Colectivo _colectivo = null!;
 		private ProveedorFechaSimulado _fechaSimulada = null!;
 
+		private Colectivo CrearColectivo(decimal? tarifa = null) {
+			return tarifa.HasValue? new Colectivo(tarifa.Value) {
+					NroInterno = 101,
+					Linea = "102 Negra"
+				} : new Colectivo {
+					NroInterno = 101,
+					Linea = "102 Negra"
+				};
+		}
+
 		[SetUp]
 		public void Setup()
 		{
@@ -19,12 +29,11 @@ namespace TarjetaSUBE.Tests
 				.Options;
 
 			_context = new SubeContext(options);
-			_colectivo = new Colectivo { NroInterno = 101, Linea = "102 Negra" };
+			_colectivo = CrearColectivo();
 			_context.Colectivos.Add(_colectivo);
 			_context.SaveChanges();
 
-			_fechaSimulada = new ProveedorFechaSimulado
-			{
+			_fechaSimulada = new ProveedorFechaSimulado {
 				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
 			};
 		}
@@ -262,14 +271,13 @@ namespace TarjetaSUBE.Tests
 		public void Boleto_Propiedades_RetornanValoresCorrectos()
 		{
 			DateTime fecha = new(2026, 10, 19, 10, 0, 0);
-			var colectivo = new Colectivo { NroInterno = 101, Linea = "102 Negra" };
 			var tarjeta = new Tarjeta { Id = 7, dniUsuario = 12345678, Saldo = 3000 };
 
 			var boleto = new Boleto
 			{
 				Id = 42,
 				Fecha = fecha,
-				Colectivo = colectivo,
+				Colectivo = _colectivo,
 				Linea = "102 Negra",
 				Monto = 1580,
 				TotalAbonado = 1780,
@@ -288,7 +296,7 @@ namespace TarjetaSUBE.Tests
 			Assert.That(boleto.SaldoRestante, Is.EqualTo(-1780));
 			Assert.That(boleto.TarjetaId, Is.EqualTo(7));
 			Assert.That(boleto.TipoTarjeta, Is.EqualTo("TarjetaNormal"));
-			Assert.That(boleto.Colectivo, Is.EqualTo(colectivo));
+			Assert.That(boleto.Colectivo, Is.EqualTo(_colectivo));
 			Assert.That(boleto.Tarjeta, Is.EqualTo(tarjeta));
 		}
 	}

@@ -4,8 +4,5 @@ namespace TarjetaSUBE {
 
 		public ColectivoInterurbano() : base(TarifaInterurbana) {
 		}
-
-		public ColectivoInterurbano(IValidadorPago validadorPago) : base(validadorPago, TarifaInterurbana) {
-		}
 	}
 }
