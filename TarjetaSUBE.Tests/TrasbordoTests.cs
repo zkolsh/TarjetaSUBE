@@ -13,6 +13,26 @@ namespace TarjetaSUBE.Tests {
 		private MedioBoletoEstudiantil _medioBoleto = null!;
 		private BoletoGratuitoEstudiantil _boletoGratuito = null!;
 
+		private Colectivo CrearColectivo(int interno, string linea) {
+			var servicioTrasbordo = new ServicioTrasbordo();
+			var selectorTarjeta = new SelectorTarjeta(new TarjetaNormal());
+
+			var validadorPago = new ValidadorPago(servicioTrasbordo, selectorTarjeta);
+
+			return new Colectivo(validadorPago) {
+				NroInterno = interno,
+				Linea = linea,
+			};
+		}
+
+		private Colectivo CrearColectivoInterurbano() {
+			var validadorPago = new ValidadorPago(new ServicioTrasbordo(), new SelectorTarjeta(new TarjetaNormal()));
+			return new ColectivoInterurbano(validadorPago) {
+				NroInterno = 201,
+				Linea = "Interurbana"
+			};
+		}
+
 		[SetUp]
 		public void Setup() {
 			var options = new DbContextOptionsBuilder<SubeContext>()
@@ -21,9 +41,9 @@ namespace TarjetaSUBE.Tests {
 
 			_context = new SubeContext(options);
 
-			_colectivoLinea1 = new Colectivo { NroInterno = 101, Linea = "101 Roja" };
-			_colectivoLinea2 = new Colectivo { NroInterno = 102, Linea = "102 Negra" };
-			_colectivoLinea3 = new Colectivo { NroInterno = 103, Linea = "103 Verde" };
+			_colectivoLinea1 = CrearColectivo(101, "101 Roja");
+			_colectivoLinea2 = CrearColectivo(102, "102 Negra");
+			_colectivoLinea3 = CrearColectivo(103, "103 Verde");
 			_context.Colectivos.AddRange(_colectivoLinea1, _colectivoLinea2, _colectivoLinea3);
 
 			_tipoNormal = new TarjetaNormal {
@@ -312,7 +332,7 @@ namespace TarjetaSUBE.Tests {
 
 		[Test]
 		public void Colectivo_PermiteInyeccionDeValidadorPagoPersonalizado() {
-			var validadorCustom = new ValidadorPago(new ServicioTrasbordo());
+			var validadorCustom = new ValidadorPago(new ServicioTrasbordo(), new SelectorTarjeta(new TarjetaNormal()));
 			var colectivo = new Colectivo(validadorCustom) {
 				NroInterno = 999,
 				Linea = "999 Custom"

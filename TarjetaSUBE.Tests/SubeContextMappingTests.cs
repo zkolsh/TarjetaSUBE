@@ -1,3 +1,5 @@
+#pragma warning disable NUnit2045 // BORREN C# YA!!!!!
+
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
@@ -9,8 +11,14 @@ namespace TarjetaSUBE.Tests {
 		private string _dbPath = null!;
 		private SubeContext _context = null!;
 
+		private ServicioTrasbordo _servicioTrasbordo = new ServicioTrasbordo();
+		private SelectorTarjeta _selectorTarjeta = new SelectorTarjeta(new TarjetaNormal());
+		private ValidadorPago _validadorPago;
+
 		[SetUp]
 		public void SetUp() {
+			_validadorPago = new ValidadorPago(_servicioTrasbordo, _selectorTarjeta);
+
 			string? searchDir = TestContext.CurrentContext.TestDirectory;
 			string? foundPath = null;
 			while (searchDir != null) {
@@ -180,7 +188,7 @@ namespace TarjetaSUBE.Tests {
 
 		[Test]
 		public void Colectivo_Table_CRUD_Operations() {
-			var colectivo = new Colectivo {
+			var colectivo = new Colectivo(_validadorPago) {
 				Linea = "142 Rojo"
 			};
 
@@ -252,7 +260,7 @@ namespace TarjetaSUBE.Tests {
 
 		[Test]
 		public void Boleto_Table_CRUD_Operations() {
-			var colectivo = new Colectivo {Linea = "110"};
+			var colectivo = new Colectivo(_validadorPago) {Linea = "110"};
 			var tarjeta = new Tarjeta {dniUsuario = 29999000, Saldo = 15000};
 
 			_context.Colectivos.Add(colectivo);
@@ -314,7 +322,7 @@ namespace TarjetaSUBE.Tests {
 
 		[Test]
 		public void CrossTable_Relational_CRUD_Operations() {
-			var colectivo = new Colectivo {Linea = "110"};
+			var colectivo = new Colectivo(_validadorPago) {Linea = "110"};
 			var tarjeta = new Tarjeta {dniUsuario = 35123123, Saldo = 10000};
 
 			_context.Colectivos.Add(colectivo);

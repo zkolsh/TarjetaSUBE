@@ -1,25 +1,18 @@
 namespace TarjetaSUBE {
-	public class ValidadorPago : IValidadorPago {
-		private readonly IServicioTrasbordo _servicioTrasbordo;
+	public class ValidadorPago(IServicioTrasbordo servicioTrasbordo, ISelectorTarjeta selectorTarjeta) : IValidadorPago {
+		private readonly IServicioTrasbordo m_servicioTrasbordo = servicioTrasbordo ?? throw new ArgumentNullException(nameof(servicioTrasbordo));
+		private readonly ISelectorTarjeta m_selectorTarjeta = selectorTarjeta ?? throw new ArgumentNullException(nameof(selectorTarjeta));
 
-		public ValidadorPago() : this(new ServicioTrasbordo()) {
-		}
-
-		public ValidadorPago(IServicioTrasbordo servicioTrasbordo) {
-			_servicioTrasbordo = servicioTrasbordo ?? throw new ArgumentNullException(nameof(servicioTrasbordo));
-		}
+		// DESINVENTEN C# YA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 		public bool PagarCon(Colectivo colectivo, SubeContext context, Tarjeta tarjeta, IProveedorFecha proveedor) {
 			tarjeta.TipoTarjeta ??= context.TiposTarjetas.Find(tarjeta.id_beneficio);
-
 			proveedor ??= new ProveedorDeFechaSistema();
+
 			DateTime fechaActual = proveedor.Ahora;
+			var tipoEfectivo = m_selectorTarjeta.ResolverTarjeta(context, tarjeta, fechaActual);
 
-			if (tarjeta.TipoTarjeta != null && !tarjeta.TipoTarjeta.PuedeViajar(context, tarjeta.Id, fechaActual)) {
-				return false;
-			}
-
-			bool esTrasbordo = _servicioTrasbordo.EsTrasbordoValido(context, tarjeta, colectivo.Linea, fechaActual);
+			bool esTrasbordo = m_servicioTrasbordo.EsTrasbordoValido(context, tarjeta, colectivo.Linea, fechaActual);
 
 			decimal tarifaBase = colectivo.ObtenerTarifaBase();
 			decimal monto = esTrasbordo ? 0m : (tarjeta.TipoTarjeta?.CalcularTarifa(context, tarjeta, fechaActual, tarifaBase) ?? tarifaBase);
@@ -32,7 +25,7 @@ namespace TarjetaSUBE {
 				}
 
 				Boleto boleto = new() {
-					TipoTarjeta = tarjeta.TipoTarjeta?.nombre ?? "TarjetaNormal",
+					TipoTarjeta = tipoEfectivo.nombre,
 					Fecha = fechaActual,
 					Colectivo = colectivo,
 					Linea = colectivo.Linea,
