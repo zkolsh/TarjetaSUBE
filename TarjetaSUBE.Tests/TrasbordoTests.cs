@@ -9,21 +9,25 @@ namespace TarjetaSUBE.Tests {
 		private Colectivo _colectivoLinea1 = null!;
 		private Colectivo _colectivoLinea2 = null!;
 		private Colectivo _colectivoLinea3 = null!;
-		private TarjetaNormal _tipoNormal = null!;
 		private MedioBoletoEstudiantil _medioBoleto = null!;
 		private BoletoGratuitoEstudiantil _boletoGratuito = null!;
+
+		private IFranjaHoraria _franjaTrasbordo = new FranjaHorariaTrasbordo();
+
+		private TipoTarjeta _tipoNormal;
+		private TipoTarjeta _medioBoletoEstudiantil;
+		private TipoTarjeta _boletoEducativo;
+
+		private Tarjeta _tarjetaNormal;
+		private Tarjeta _tarjetaMedioBoleto;
+		private Tarjeta _tarjetaBoletoEducativo;
+
+		private ProveedorFechaSimulado reloj;
 
 		private Colectivo CrearColectivo(int interno, string linea) {
 			return new Colectivo {
 				NroInterno = interno,
 				Linea = linea,
-			};
-		}
-
-		private Colectivo CrearColectivoInterurbano() {
-			return new ColectivoInterurbano {
-				NroInterno = 201,
-				Linea = "Interurbana"
 			};
 		}
 
@@ -45,19 +49,49 @@ namespace TarjetaSUBE.Tests {
 				nombre = "TarjetaNormal",
 				porcentaje_descuento = 0
 			};
-			_medioBoleto = new MedioBoletoEstudiantil {
-				id = 2,
-				nombre = "Medio Boleto Estudiantil",
+
+			_medioBoletoEstudiantil = new MedioBoletoEstudiantil {
+				id = 3,
+				nombre = "MedioBoletoEstudiantil",
 				porcentaje_descuento = 50
 			};
-			_boletoGratuito = new BoletoGratuitoEstudiantil {
-				id = 3,
-				nombre = "Boleto Gratuito Estudiantil",
+
+			_boletoEducativo = new BoletoGratuitoEstudiantil {
+				id = 4,
+				nombre = "BoletoGratuitoEstudiantil",
 				porcentaje_descuento = 100
 			};
 
-			_context.TiposTarjetas.AddRange(_tipoNormal, _medioBoleto, _boletoGratuito);
+			_tarjetaNormal = new Tarjeta {
+				dniUsuario = 12345678,
+				Saldo = 0,
+				TipoTarjeta = _tipoNormal,
+			};
+
+			_tarjetaMedioBoleto = new Tarjeta {
+				dniUsuario = 12345678,
+				Saldo = 0,
+				TipoTarjeta = _medioBoletoEstudiantil,
+			};
+
+			_tarjetaBoletoEducativo = new Tarjeta {
+				dniUsuario = 12345678,
+				Saldo = 0,
+				TipoTarjeta = _boletoEducativo,
+			};
+
+			_context.TiposTarjetas.Add(_tipoNormal);
+			_context.TiposTarjetas.Add(_medioBoletoEstudiantil);
+			_context.TiposTarjetas.Add(_boletoEducativo);
+			_context.Tarjetas.Add(_tarjetaNormal);
+			_context.Tarjetas.Add(_tarjetaMedioBoleto);
+			_context.Tarjetas.Add(_tarjetaBoletoEducativo);
+
 			_context.SaveChanges();
+
+			reloj = new ProveedorFechaSimulado {
+				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
+			};
 		}
 
 		[TearDown]
@@ -67,53 +101,39 @@ namespace TarjetaSUBE.Tests {
 
 		[Test]
 		public void FranjaHorariaTrasbordo_PermiteLunesASabadoEntre7Y22() {
-			var franja = new FranjaHorariaTrasbordo();
-
 			// Lunes a las 07:00 (límite inferior)
 			var lunes7am = new DateTime(2026, 10, 19, 7, 0, 0);
-			Assert.That(franja.Contiene(lunes7am), Is.True);
+			Assert.That(_franjaTrasbordo.Contiene(lunes7am), Is.True);
 
 			// Miércoles a las 14:30
 			var miercolesTarde = new DateTime(2026, 10, 21, 14, 30, 0);
-			Assert.That(franja.Contiene(miercolesTarde), Is.True);
+			Assert.That(_franjaTrasbordo.Contiene(miercolesTarde), Is.True);
 
 			// Sábado a las 22:00 (límite superior)
 			var sabado22pm = new DateTime(2026, 10, 24, 22, 0, 0);
-			Assert.That(franja.Contiene(sabado22pm), Is.True);
+			Assert.That(_franjaTrasbordo.Contiene(sabado22pm), Is.True);
 
 			// Domingo (no permitido)
 			var domingo = new DateTime(2026, 10, 25, 10, 0, 0);
-			Assert.That(franja.Contiene(domingo), Is.False);
+			Assert.That(_franjaTrasbordo.Contiene(domingo), Is.False);
 
 			// Lunes antes de las 7:00 (ej. 6:59)
 			var lunesTemprano = new DateTime(2026, 10, 19, 6, 59, 59);
-			Assert.That(franja.Contiene(lunesTemprano), Is.False);
+			Assert.That(_franjaTrasbordo.Contiene(lunesTemprano), Is.False);
 
 			// Sábado después de las 22:00 (ej. 22:01)
 			var sabadoNoche = new DateTime(2026, 10, 24, 22, 1, 0);
-			Assert.That(franja.Contiene(sabadoNoche), Is.False);
+			Assert.That(_franjaTrasbordo.Contiene(sabadoNoche), Is.False);
 		}
 
 		[Test]
 		public void Trasbordo_DentroDeUnaHoraYEntreLineasDistintas_EsGratisYSeIndicaEnBoleto() {
-			var tarjeta = new Tarjeta {
-				dniUsuario = 12345678,
-				Saldo = 5000,
-				TipoTarjeta = _tipoNormal,
-				id_beneficio = _tipoNormal.id
-			};
-			_context.Tarjetas.Add(tarjeta);
-			_context.SaveChanges();
-
-			// Lunes a las 08:00
-			var reloj = new ProveedorFechaSimulado {
-				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
-			};
+			_tarjetaNormal.CargarTarjeta(5000, _context);
 
 			// Primer viaje en Línea 101
-			bool primerViaje = _colectivoLinea1.pagarCon(_context, tarjeta, reloj);
+			bool primerViaje = _colectivoLinea1.pagarCon(_context, _tarjetaNormal, reloj);
 			Assert.That(primerViaje, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(2850m)); // 5000 - 2150
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(2850m)); // 5000 - 2150
 
 			var primerBoleto = _context.Boletos.OrderByDescending(b => b.Id).First();
 			Assert.That(primerBoleto.EsTrasbordo, Is.False);
@@ -121,10 +141,10 @@ namespace TarjetaSUBE.Tests {
 
 			// 30 minutos después en Línea 102
 			reloj.AdelantarMinutos(30);
-			bool segundoViaje = _colectivoLinea2.pagarCon(_context, tarjeta, reloj);
+			bool segundoViaje = _colectivoLinea2.pagarCon(_context, _tarjetaNormal, reloj);
 
 			Assert.That(segundoViaje, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(2850m), "No debió cobrar saldo en trasbordo");
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(2850m), "No debió cobrar saldo en trasbordo");
 
 			var boletoTrasbordo = _context.Boletos.OrderByDescending(b => b.Id).First();
 			Assert.That(boletoTrasbordo.EsTrasbordo, Is.True, "Debe indicarse en el boleto que es trasbordo");
@@ -135,29 +155,18 @@ namespace TarjetaSUBE.Tests {
 
 		[Test]
 		public void Trasbordo_EnMismaLinea_NoAplicaTrasbordoYCobraTarifa() {
-			var tarjeta = new Tarjeta {
-				dniUsuario = 12345678,
-				Saldo = 10000,
-				TipoTarjeta = _tipoNormal,
-				id_beneficio = _tipoNormal.id
-			};
-			_context.Tarjetas.Add(tarjeta);
-			_context.SaveChanges();
-
-			var reloj = new ProveedorFechaSimulado {
-				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
-			};
+			_tarjetaNormal.CargarTarjeta(10000, _context);
 
 			// Primer viaje en Línea 101
-			_colectivoLinea1.pagarCon(_context, tarjeta, reloj);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(7850m));
+			_colectivoLinea1.pagarCon(_context, _tarjetaNormal, reloj);
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(7850m));
 
 			// 20 minutos después, misma línea 101
 			reloj.AdelantarMinutos(20);
-			bool segundoViaje = _colectivoLinea1.pagarCon(_context, tarjeta, reloj);
+			bool segundoViaje = _colectivoLinea1.pagarCon(_context, _tarjetaNormal, reloj);
 
 			Assert.That(segundoViaje, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5700m), "En la misma línea debe cobrar tarifa regular");
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(5700m), "En la misma línea debe cobrar tarifa regular");
 
 			var boleto = _context.Boletos.OrderByDescending(b => b.Id).First();
 			Assert.That(boleto.EsTrasbordo, Is.False);
@@ -166,28 +175,17 @@ namespace TarjetaSUBE.Tests {
 
 		[Test]
 		public void Trasbordo_PasadaLaHora_NoAplicaTrasbordoYCobraTarifa() {
-			var tarjeta = new Tarjeta {
-				dniUsuario = 12345678,
-				Saldo = 10000,
-				TipoTarjeta = _tipoNormal,
-				id_beneficio = _tipoNormal.id
-			};
-			_context.Tarjetas.Add(tarjeta);
-			_context.SaveChanges();
-
-			var reloj = new ProveedorFechaSimulado {
-				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
-			};
+			_tarjetaNormal.CargarTarjeta(10000, _context);
 
 			// Primer viaje en Línea 101
-			_colectivoLinea1.pagarCon(_context, tarjeta, reloj);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(7850m));
+			_colectivoLinea1.pagarCon(_context, _tarjetaNormal, reloj);
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(7850m));
 
 			reloj.AdelantarMinutos(61);
-			bool segundoViaje = _colectivoLinea2.pagarCon(_context, tarjeta, reloj);
+			bool segundoViaje = _colectivoLinea2.pagarCon(_context, _tarjetaNormal, reloj);
 
 			Assert.That(segundoViaje, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5700m));
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(5700m));
 
 			var boleto = _context.Boletos.OrderByDescending(b => b.Id).First();
 			Assert.That(boleto.EsTrasbordo, Is.False);
@@ -196,101 +194,67 @@ namespace TarjetaSUBE.Tests {
 
 		[Test]
 		public void TrasbordosSinLimite_DentroDelPlazoDeUnaHoraDesdeElPrimerBoleto() {
-			var tarjeta = new Tarjeta {
-				dniUsuario = 12345678,
-				Saldo = 10000,
-				TipoTarjeta = _tipoNormal,
-				id_beneficio = _tipoNormal.id
-			};
-			_context.Tarjetas.Add(tarjeta);
-			_context.SaveChanges();
+			_tarjetaNormal.CargarTarjeta(10000, _context);
 
-			var reloj = new ProveedorFechaSimulado {
-				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
-			};
-
-			_colectivoLinea1.pagarCon(_context, tarjeta, reloj);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(7850m));
+			_colectivoLinea1.pagarCon(_context, _tarjetaNormal, reloj);
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(7850m));
 
 			reloj.AdelantarMinutos(15);
-			bool viaje2 = _colectivoLinea2.pagarCon(_context, tarjeta, reloj);
+			bool viaje2 = _colectivoLinea2.pagarCon(_context, _tarjetaNormal, reloj);
 			Assert.That(viaje2, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(7850m));
 			Assert.That(_context.Boletos.OrderByDescending(b => b.Id).First().EsTrasbordo, Is.True);
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(7850m));
 
 			reloj.AdelantarMinutos(20);
-			bool viaje3 = _colectivoLinea3.pagarCon(_context, tarjeta, reloj);
+			bool viaje3 = _colectivoLinea3.pagarCon(_context, _tarjetaNormal, reloj);
 			Assert.That(viaje3, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(7850m));
 			Assert.That(_context.Boletos.OrderByDescending(b => b.Id).First().EsTrasbordo, Is.True);
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(7850m));
 
 			reloj.AdelantarMinutos(20);
-			bool viaje4 = _colectivoLinea1.pagarCon(_context, tarjeta, reloj);
+			bool viaje4 = _colectivoLinea1.pagarCon(_context,_tarjetaNormal, reloj);
 			Assert.That(viaje4, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(7850m));
 			Assert.That(_context.Boletos.OrderByDescending(b => b.Id).First().EsTrasbordo, Is.True);
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(7850m));
 
 			// A las 09:05 (ya pasó 1 hora y 5 minutos desde el primer boleto a las 08:00) - Cobra
 			reloj.AdelantarMinutos(10);
-			bool viaje5 = _colectivoLinea2.pagarCon(_context, tarjeta, reloj);
+			bool viaje5 = _colectivoLinea2.pagarCon(_context, _tarjetaNormal, reloj);
 			Assert.That(viaje5, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5700m), "Debe cobrar nuevo boleto porque superó 1 hora del primer boleto");
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(5700m), "Debe cobrar nuevo boleto porque superó 1 hora del primer boleto");
 			Assert.That(_context.Boletos.OrderByDescending(b => b.Id).First().EsTrasbordo, Is.False);
 		}
 
 		[Test]
 		public void Trasbordo_FueraDeHorarioPermitido_NoAplicaTrasbordo() {
-			var tarjeta = new Tarjeta {
-				dniUsuario = 12345678,
-				Saldo = 10000,
-				TipoTarjeta = _tipoNormal,
-				id_beneficio = _tipoNormal.id
-			};
-			_context.Tarjetas.Add(tarjeta);
-			_context.SaveChanges();
+			_tarjetaNormal.CargarTarjeta(10000, _context);
+			reloj.FechaActual = new DateTime(2026, 10, 25, 10, 0, 0);
 
-			// Domingo a las 10:00 (Domingos no hay trasbordo)
-			var reloj = new ProveedorFechaSimulado {
-				FechaActual = new DateTime(2026, 10, 25, 10, 0, 0)
-			};
-
-			_colectivoLinea1.pagarCon(_context, tarjeta, reloj);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(7850m));
+			_colectivoLinea1.pagarCon(_context, _tarjetaNormal, reloj);
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(7850m));
 
 			// 20 minutos después en Línea 102
 			reloj.AdelantarMinutos(20);
-			_colectivoLinea2.pagarCon(_context, tarjeta, reloj);
+			_colectivoLinea2.pagarCon(_context, _tarjetaNormal, reloj);
 
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5700m), "En domingo no aplica trasbordo sin costo");
+			Assert.That(_tarjetaNormal.Saldo, Is.EqualTo(5700m), "En domingo no aplica trasbordo sin costo");
 			Assert.That(_context.Boletos.OrderByDescending(b => b.Id).First().EsTrasbordo, Is.False);
 		}
 
 		[Test]
 		public void TodasLasTarjetas_PuedenRealizarTrasbordo_MedioBoleto() {
-			var tarjeta = new Tarjeta {
-				dniUsuario = 23456789,
-				Saldo = 5000,
-				TipoTarjeta = _medioBoleto,
-				id_beneficio = _medioBoleto.id
-			};
-			_context.Tarjetas.Add(tarjeta);
-			_context.SaveChanges();
-
-			// Lunes 08:00
-			var reloj = new ProveedorFechaSimulado {
-				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
-			};
+			_tarjetaMedioBoleto.CargarTarjeta(5000, _context);
 
 			// Primer viaje con medio boleto (paga 1075)
-			_colectivoLinea1.pagarCon(_context, tarjeta, reloj);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(3925m)); // 5000 - 1075
+			_colectivoLinea1.pagarCon(_context, _tarjetaMedioBoleto, reloj);
+			Assert.That(_tarjetaMedioBoleto.Saldo, Is.EqualTo(3925m)); // 5000 - 1075
 
 			// 20 minutos después toma otra línea -> trasbordo gratis
 			reloj.AdelantarMinutos(20);
-			bool trasbordo = _colectivoLinea2.pagarCon(_context, tarjeta, reloj);
+			bool trasbordo = _colectivoLinea2.pagarCon(_context, _tarjetaMedioBoleto, reloj);
 
 			Assert.That(trasbordo, Is.True);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(3925m));
+			Assert.That(_tarjetaMedioBoleto.Saldo, Is.EqualTo(3925m));
 			var boleto = _context.Boletos.OrderByDescending(b => b.Id).First();
 			Assert.That(boleto.EsTrasbordo, Is.True);
 			Assert.That(boleto.Monto, Is.EqualTo(0m));
@@ -298,25 +262,14 @@ namespace TarjetaSUBE.Tests {
 
 		[Test]
 		public void TodasLasTarjetas_PuedenRealizarTrasbordo_BoletoGratuito() {
-			var tarjeta = new Tarjeta {
-				dniUsuario = 34567890,
-				Saldo = 5000,
-				TipoTarjeta = _boletoGratuito,
-				id_beneficio = _boletoGratuito.id
-			};
-			_context.Tarjetas.Add(tarjeta);
-			_context.SaveChanges();
+			_tarjetaBoletoEducativo.CargarTarjeta(5000, _context);
 
-			var reloj = new ProveedorFechaSimulado {
-				FechaActual = new DateTime(2026, 10, 19, 8, 0, 0)
-			};
-
-			_colectivoLinea1.pagarCon(_context, tarjeta, reloj);
-			Assert.That(tarjeta.Saldo, Is.EqualTo(5000m));
+			_colectivoLinea1.pagarCon(_context, _tarjetaBoletoEducativo, reloj);
+			Assert.That(_tarjetaBoletoEducativo.Saldo, Is.EqualTo(5000m));
 
 			// 25 minutos después en línea 2
 			reloj.AdelantarMinutos(25);
-			bool trasbordo = _colectivoLinea2.pagarCon(_context, tarjeta, reloj);
+			bool trasbordo = _colectivoLinea2.pagarCon(_context, _tarjetaBoletoEducativo, reloj);
 
 			Assert.That(trasbordo, Is.True);
 			var boleto = _context.Boletos.OrderByDescending(b => b.Id).First();
